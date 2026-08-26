@@ -1,58 +1,36 @@
-"""Utility helper functions for CLI operations."""
+import sys
+import json
+from pathlib import Path
 
-from typing import Any, Dict, List, Optional
+def load_json_file(file_path: str) -> dict:
+    """Load and parse a JSON file safely with path expansion."""
+    path = Path(file_path).expanduser().resolve()
+    if not path.is_file():
+        raise FileNotFoundError(f"Target file not found: {path}")
+    
+    with open(path, 'r', encoding='utf-8') as f:
+        try:
+            return json.load(f)
+        except json.JSONDecodeError as e:
+            raise ValueError(f"Invalid JSON format in {path}: {e}")
 
+def save_json_file(file_path: str, data: dict, indent: int = 4) -> None:
+    """Serialize dictionary to a JSON file with pretty printing."""
+    path = Path(file_path).expanduser().resolve()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    
+    with open(path, 'w', encoding='utf-8') as f:
+        json.dump(data, f, indent=indent)
 
-def format_output(data: Dict[str, Any], indent: int = 2) -> str:
-    """Format dictionary data into a readable string representation.
+def format_output(data: any, as_json: bool = False) -> str:
+    """Format data structure for CLI output presentation."""
+    if as_json:
+        return json.dumps(data, indent=2)
+    if isinstance(data, (dict, list)):
+        return json.dumps(data, indent=2)
+    return str(data)
 
-    Args:
-        data: The dictionary to format.
-        indent: The number of spaces for indentation.
-
-    Returns:
-        A formatted string representation of the data.
-    """
-    import json
-    try:
-        return json.dumps(data, indent=indent)
-    except (TypeError, ValueError) as e:
-        return f"Error formatting output: {e}"
-
-
-def parse_arguments(raw_args: List[str]) -> Dict[str, str]:
-    """Parse raw command line arguments into a key-value mapping.
-
-    Args:
-        raw_args: A list of raw argument strings.
-
-    Returns:
-        A dictionary containing parsed key-value pairs.
-    """
-    parsed: Dict[str, str] = {}
-    current_key: Optional[str] = None
-
-    for arg in raw_args:
-        if arg.startswith("--"):
-            current_key = arg[2:]
-            parsed[current_key] = ""
-        elif current_key is not None:
-            parsed[current_key] = arg
-            current_key = None
-
-    return parsed
-
-
-def truncate_string(text: str, max_length: int = 50) -> str:
-    """Truncate a string to a maximum length with an ellipsis.
-
-    Args:
-        text: The string to truncate.
-        max_length: Maximum allowed length before truncation.
-
-    Returns:
-        The truncated string.
-    """
-    if len(text) <= max_length:
-        return text
-    return text[:max_length - 3] + "..."
+def safe_print(message: str, error: bool = False) -> None:
+    """Print message to standard output or standard error stream."""
+    stream = sys.stderr if error else sys.stdout
+    print(message, file=stream)
