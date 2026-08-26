@@ -1,35 +1,37 @@
-import sys
-import os
-from typing import Any, Dict, List, Optional
+import time
+import functools
+import logging
 
-def format_output(data: Dict[str, Any], indent: int = 2) -> str:
-    """Format a dictionary into a readable string representation."""
-    import json
-    try:
-        return json.dumps(data, indent=indent, sort_keys=True)
-    except (TypeError, ValueError) as e:
-        return f"Error formatting output: {e}"
+logger = logging.getLogger("cli-helper-26")
 
-def safe_file_read(filepath: str) -> Optional[str]:
-    """Safely read text from a file, returning None if an error occurs."""
-    if not os.path.exists(filepath):
-        return None
-    try:
-        with open(filepath, 'r', encoding='utf-8') as f:
-            return f.read()
-    except IOError:
-        return None
+def retry(max_attempts=3, delay=1.0, backoff=2.0, exceptions=(Exception,)):
+    """Decorator to retry network operations with exponential backoff."""
+    def decorator(func):
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            current_delay = delay
+            for attempt in range(1, max_attempts + 1):
+                try:
+                    return func(*args, **kwargs)
+                except exceptions as e:
+                    if attempt == max_attempts:
+                        logger.error(f"Operation {func.__name__} failed after {max_attempts} attempts.")
+                        raise
+                    
+                    logger.warning(f"Attempt {attempt} failed for {func.__name__}: {e}. Retrying in {current_delay}s...")
+                    time.sleep(current_delay)
+                    current_delay *= backoff
+        return wrapper
+    return decorator
 
-def parse_key_value_args(args: List[str]) -> Dict[str, str]:
-    """Parse a list of 'key=value' command line arguments into a dictionary."""
-    result = {}
-    for arg in args:
-        if '=' in arg:
-            key, value = arg.split('=', 1)
-            result[key.strip()] = value.strip()
-    return result
-
-def print_error_and_exit(message: str, code: int = 1) -> None:
-    """Print an error message to stderr and exit the program."""
-    print(f"Error: {message}", file=sys.stderr)
-    sys.exit(code)
+def safe_request(url, timeout=5):
+    """Simulated network request helper."""
+    import urllib.request
+    import urllib.error
+    
+    @retry(max_attempts=3, delay=0.5, exceptions=(urllib.error.URLError, TimeoutError))
+    def _execute():
+        with urllib.request.urlopen(url, timeout=timeout) as response:
+            return response.read().decode('utf-8')
+            
+    return _execute()
