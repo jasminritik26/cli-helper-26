@@ -1,28 +1,28 @@
-"""Global constants and configuration values for cli-helper-26."""
+"""
+Global constants and configuration values for cli-helper-26.
 
-from typing import Dict, Final, List
+This module defines application-wide limits, default settings, and exit codes.
+"""
 
-# Application metadata
+from typing import Dict, Final
+
+DEFAULT_TIMEOUT: Final[int] = 30
+BUFFER_SIZE: Final[int] = 1024
 APP_NAME: Final[str] = "cli-helper-26"
-APP_VERSION: Final[str] = "1.0.0"
+VERSION: Final[str] = "1.0.0"
 
-# Exit codes
 EXIT_SUCCESS: Final[int] = 0
 EXIT_FAILURE: Final[int] = 1
 EXIT_INVALID_ARGS: Final[int] = 2
 
-# Supported command prefixes
-COMMAND_PREFIXES: Final[List[str]] = ["--", "-"]
-
-# Default configuration settings
-DEFAULT_CONFIG: Final[Dict[str, str]] = {
-    "verbosity": "info",
-    "timeout": "30",
-    "encoding": "utf-8",
+SUPPORTED_FORMATS: Final[Dict[str, str]] = {
+    "json": "application/json",
+    "yaml": "application/x-yaml",
+    "text": "text/plain",
 }
 
-# Maximum retry attempts for operations
-MAX_RETRIES: Final[int] = 3
-
-# Log format specification
-LOG_FORMAT: Final[str] = "%(asctime)s [%(levelname)s] %(name)s: %(message)s"
+ERROR_MESSAGES: Final[Dict[int, str]] = {
+    EXIT_SUCCESS: "Operation completed successfully.",
+    EXIT_FAILURE: "An unexpected error occurred.",
+    EXIT_INVALID_ARGS: "Invalid command line arguments provided.",
+}
