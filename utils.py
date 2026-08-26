@@ -1,39 +1,35 @@
-import time
-import functools
-import logging
+import sys
+import os
+from typing import Any, Dict, List, Optional
 
-logger = logging.getLogger(__name__)
+def format_output(data: Dict[str, Any], indent: int = 2) -> str:
+    """Format a dictionary into a readable string representation."""
+    import json
+    try:
+        return json.dumps(data, indent=indent, sort_keys=True)
+    except (TypeError, ValueError) as e:
+        return f"Error formatting output: {e}"
 
-def retry_operation(max_attempts=3, delay=2.0, backoff=2.0, exceptions=(Exception,)):
-    """Decorator to retry network or flaky operations with exponential backoff."""
-    def decorator(func):
-        @functools.wraps(func)
-        def wrapper(*args, **kwargs):
-            attempts = 0
-            current_delay = delay
-            
-            while attempts < max_attempts:
-                try:
-                    return func(*args, **kwargs)
-                except exceptions as e:
-                    attempts += 1
-                    if attempts >= max_attempts:
-                        logger.error(f"Operation '{func.__name__}' failed after {max_attempts} attempts.")
-                        raise
-                    
-                    logger.warning(f"Attempt {attempts} failed for '{func.__name__}': {e}. Retrying in {current_delay}s...")
-                    time.sleep(current_delay)
-                    current_delay *= backoff
-                    
-        return wrapper
-    return decorator
+def safe_file_read(filepath: str) -> Optional[str]:
+    """Safely read text from a file, returning None if an error occurs."""
+    if not os.path.exists(filepath):
+        return None
+    try:
+        with open(filepath, 'r', encoding='utf-8') as f:
+            return f.read()
+    except IOError:
+        return None
 
-def safe_network_call(url, client_session, timeout=10):
-    """Helper to execute standard GET requests with applied retry logic."""
-    @retry_operation(max_attempts=3, delay=1.0, backoff=1.5)
-    def _execute():
-        response = client_session.get(url, timeout=timeout)
-        response.raise_for_status()
-        return response
-    
-    return _execute()
+def parse_key_value_args(args: List[str]) -> Dict[str, str]:
+    """Parse a list of 'key=value' command line arguments into a dictionary."""
+    result = {}
+    for arg in args:
+        if '=' in arg:
+            key, value = arg.split('=', 1)
+            result[key.strip()] = value.strip()
+    return result
+
+def print_error_and_exit(message: str, code: int = 1) -> None:
+    """Print an error message to stderr and exit the program."""
+    print(f"Error: {message}", file=sys.stderr)
+    sys.exit(code)
