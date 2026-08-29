@@ -1,74 +1,71 @@
-import functools
-from typing import Any, Callable, Dict, List
+"""Core helper functions for CLI operations."""
 
+import os
+import time
+from typing import Any, Callable, Dict, List, Optional
 
-class CoreProcessor:
-    """Core processor for CLI helper with performance optimizations."""
+def get_env(name: str, default: Optional[str] = None) -> Optional[str]:
+    """Retrieve environment variable with optional default."""
+    return os.getenv(name, default)
 
-    def __init__(self) -> None:
-        self.command_registry: Dict[str, Callable[[List[str], str], Any]] = {}
-        # LRU cache applied via decorator for performance
+def confirm_action(prompt: str, default: bool = False) -> bool:
+    """Ask for user confirmation with default option."""
+    options = "Y/n" if default else "y/N"
+    try:
+        response = input(f"{prompt} [{options}]: ").strip().lower()
+    except (EOFError, KeyboardInterrupt):
+        return default
+    if not response:
+        return default
+    return response in ('y', 'yes')
 
-    def register_command(self, name: str, func: Callable) -> None:
-        """Register a new command with its handler function."""
-        self.command_registry[name] = func
+def format_table(data: List[Dict[str, Any]], headers: Optional[List[str]] = None) -> str:
+    """Return a formatted table from list of dictionaries."""
+    if not data:
+        return "No data to display."
+    if headers is None:
+        headers = list(data[0].keys())
+    # Determine column widths
+    widths: Dict[str, int] = {}
+    for key in headers:
+        max_len = len(str(key))
+        for row in data:
+            val = str(row.get(key, ''))
+            if len(val) > max_len:
+                max_len = len(val)
+        widths[key] = max_len
+    # Build the table
+    header_row = " | ".join(str(h).ljust(widths[h]) for h in headers)
+    separator = "-+-".join("-" * widths[h] for h in headers)
+    table_rows = []
+    for row in data:
+        row_line = " | ".join(str(row.get(h, '')).ljust(widths[h]) for h in headers)
+        table_rows.append(row_line)
+    return "\n".join([header_row, separator] + table_rows)
 
-    @functools.lru_cache(maxsize=256)
-    def _cached_process(self, input_data: str) -> str:
-        """Cached processing for performance on repeated inputs."""
-        # Simulate or perform actual processing
-        processed = input_data.strip().lower()
-        # Additional work to justify cache
-        for i in range(500):
-            processed = processed + str(i % 10)
-            if len(processed) > 100:
-                processed = processed[:50]
-        return processed[::-1]
+def retry_operation(func: Callable[[], Any], max_retries: int = 3, delay: float = 1.0) -> Any:
+    """Execute function with retry on exception."""
+    last_exc = None
+    for i in range(max_retries):
+        try:
+            return func()
+        except Exception as e:
+            last_exc = e
+            if i < max_retries - 1:
+                time.sleep(delay)
+    if last_exc:
+        raise last_exc
+    return None
 
-    def execute_command(self, command: str, args: List[str]) -> Any:
-        """Execute a command using optimized dispatch and caching."""
-        if command not in self.command_registry:
-            return {"error": f"Command '{command}' not found"}
-
-        # Build key for potential cache use
-        arg_str = " ".join(args)
-        cached = self._cached_process(arg_str)
-
-        handler = self.command_registry[command]
-        # Pass cached result for use in handler
-        return handler(args, cached)
-
-    def process_input(self, user_input: str) -> str:
-        """Process user CLI input with efficient parsing."""
-        if not user_input or not user_input.strip():
-            return "Empty input received"
-
-        parts = user_input.strip().split(maxsplit=1)
-        command = parts[0].lower()
-        args = parts[1].split() if len(parts) > 1 else []
-
-        result = self.execute_command(command, args)
-        if isinstance(result, dict):
-            return result.get("error", str(result))
-        return str(result)
-
-
-def create_default_processor() -> CoreProcessor:
-    """Factory to create processor with sample commands."""
-    processor = CoreProcessor()
-
-    def sample_handler(args: List[str], cached: str) -> str:
-        """Sample command handler demonstrating cache usage."""
-        return f"Processed args: {args} with cache: {cached[:20]}..."
-
-    processor.register_command("sample", sample_handler)
-    processor.register_command("help", lambda a, c: "Available: sample, help")
-    return processor
-
-
-if __name__ == "__main__":
-    proc = create_default_processor()
-    print(proc.process_input("sample test input"))
-    print(proc.process_input("help"))
-    # Repeated call to show cache
-    print(proc.process_input("sample test input"))
+def get_choice(prompt: str, options: List[str]) -> Optional[str]:
+    """Prompt user to select from list of options."""
+    print(prompt)
+    for i, opt in enumerate(options, 1):
+        print(f"  {i}. {opt}")
+    try:
+        choice = int(input("Enter choice: ").strip())
+        if 1 <= choice <= len(options):
+            return options[choice - 1]
+    except (ValueError, EOFError, KeyboardInterrupt):
+        pass
+    return None
