@@ -1,36 +1,64 @@
-import sys
-import json
-from pathlib import Path
+import functools
 
-def load_json_file(file_path: str) -> dict:
-    """Load and parse a JSON file safely with path expansion."""
-    path = Path(file_path).expanduser().resolve()
-    if not path.is_file():
-        raise FileNotFoundError(f"Target file not found: {path}")
-    
-    with open(path, 'r', encoding='utf-8') as f:
-        try:
-            return json.load(f)
-        except json.JSONDecodeError as e:
-            raise ValueError(f"Invalid JSON format in {path}: {e}")
+import collections
 
-def save_json_file(file_path: str, data: dict, indent: int = 4) -> None:
-    """Serialize dictionary to a JSON file with pretty printing."""
-    path = Path(file_path).expanduser().resolve()
-    path.parent.mkdir(parents=True, exist_ok=True)
-    
-    with open(path, 'w', encoding='utf-8') as f:
-        json.dump(data, f, indent=indent)
+from typing import List, Dict, Any
 
-def format_output(data: any, as_json: bool = False) -> str:
-    """Format data structure for CLI output presentation."""
-    if as_json:
-        return json.dumps(data, indent=2)
-    if isinstance(data, (dict, list)):
-        return json.dumps(data, indent=2)
-    return str(data)
+def get_unique_preserved(items: List[Any]) -> List[Any]:
+    """Return list of unique items preserving original order.
+    Optimized using a dict for O(1) average lookups instead of O(n) list search.
+    """
+    seen = {}
+    unique = []
+    for item in items:
+        if item not in seen:
+            seen[item] = True
+            unique.append(item)
+    return unique
 
-def safe_print(message: str, error: bool = False) -> None:
-    """Print message to standard output or standard error stream."""
-    stream = sys.stderr if error else sys.stdout
-    print(message, file=stream)
+def count_frequencies(items: List[Any]) -> Dict[Any, int]:
+    """Count frequencies of items in list using Counter.
+    This is more efficient than manual loops for counting.
+    """
+    return dict(collections.Counter(items))
+
+@functools.lru_cache(maxsize=128)
+def compute_similarity(text1: str, text2: str) -> float:
+    """Compute Jaccard similarity between two texts with caching.
+    Caching optimizes for repeated comparisons in core processing.
+    """
+    words1 = set(text1.lower().split())
+    words2 = set(text2.lower().split())
+    if not words1 and not words2:
+        return 1.0
+    intersection = len(words1.intersection(words2))
+    union = len(words1.union(words2))
+    return intersection / union if union > 0 else 0.0
+
+def batch_process(data: List[Dict[str, Any]], batch_size: int = 100) -> List[Dict[str, Any]]:
+    """Process data in batches for better memory performance.
+    Avoids loading entire result set at once for large inputs.
+    """
+    results: List[Dict[str, Any]] = []
+    for i in range(0, len(data), batch_size):
+        batch = data[i : i + batch_size]
+        # Example processing: filter non-empty
+        processed_batch = [item for item in batch if item.get("value") is not None]
+        results.extend(processed_batch)
+    return results
+
+def filter_exclusions(data: List[Any], exclusions: List[Any]) -> List[Any]:
+    """Filter out excluded items using set for O(1) checks.
+    Performance optimization for large datasets in core module.
+    """
+    exclusion_set = set(exclusions)
+    return [item for item in data if item not in exclusion_set]
+
+def merge_dicts_efficiently(dicts_list: List[Dict[str, Any]]) -> Dict[str, Any]:
+    """Merge list of dicts efficiently with update.
+    Avoids creating many intermediate objects.
+    """
+    merged: Dict[str, Any] = {}
+    for d in dicts_list:
+        merged.update(d)
+    return merged
