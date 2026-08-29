@@ -1,71 +1,60 @@
-"""Core helper functions for CLI operations."""
+import functools
+from typing import Any, Dict, List, Optional
 
-import os
-import time
-from typing import Any, Callable, Dict, List, Optional
+class CoreModule:
+    """Core functionality for cli-helper-26 with performance optimizations."""
 
-def get_env(name: str, default: Optional[str] = None) -> Optional[str]:
-    """Retrieve environment variable with optional default."""
-    return os.getenv(name, default)
+    def __init__(self) -> None:
+        self._cache: Dict[str, Any] = {}
+        self._stats: Dict[str, int] = {"calls": 0, "hits": 0}
 
-def confirm_action(prompt: str, default: bool = False) -> bool:
-    """Ask for user confirmation with default option."""
-    options = "Y/n" if default else "y/N"
-    try:
-        response = input(f"{prompt} [{options}]: ").strip().lower()
-    except (EOFError, KeyboardInterrupt):
-        return default
-    if not response:
-        return default
-    return response in ('y', 'yes')
+    @functools.lru_cache(maxsize=512)
+    def _heavy_computation(self, data: str) -> int:
+        """Perform heavy computation with automatic caching for performance."""
+        # Simulate CPU intensive task
+        result = 0
+        for i in range(5000):
+            result += (i * hash(data)) % 1000
+        return result
 
-def format_table(data: List[Dict[str, Any]], headers: Optional[List[str]] = None) -> str:
-    """Return a formatted table from list of dictionaries."""
-    if not data:
-        return "No data to display."
-    if headers is None:
-        headers = list(data[0].keys())
-    # Determine column widths
-    widths: Dict[str, int] = {}
-    for key in headers:
-        max_len = len(str(key))
-        for row in data:
-            val = str(row.get(key, ''))
-            if len(val) > max_len:
-                max_len = len(val)
-        widths[key] = max_len
-    # Build the table
-    header_row = " | ".join(str(h).ljust(widths[h]) for h in headers)
-    separator = "-+-".join("-" * widths[h] for h in headers)
-    table_rows = []
-    for row in data:
-        row_line = " | ".join(str(row.get(h, '')).ljust(widths[h]) for h in headers)
-        table_rows.append(row_line)
-    return "\n".join([header_row, separator] + table_rows)
+    def process_data(self, items: List[str]) -> Dict[str, int]:
+        """Process list of items with optimized caching."""
+        results: Dict[str, int] = {}
+        for item in items:
+            self._stats["calls"] += 1
+            if item in self._cache:
+                self._stats["hits"] += 1
+                results[item] = self._cache[item]
+            else:
+                computed = self._heavy_computation(item)
+                self._cache[item] = computed
+                results[item] = computed
+        return results
 
-def retry_operation(func: Callable[[], Any], max_retries: int = 3, delay: float = 1.0) -> Any:
-    """Execute function with retry on exception."""
-    last_exc = None
-    for i in range(max_retries):
-        try:
-            return func()
-        except Exception as e:
-            last_exc = e
-            if i < max_retries - 1:
-                time.sleep(delay)
-    if last_exc:
-        raise last_exc
-    return None
+    def batch_process(self, items: List[str]) -> List[int]:
+        """Optimized batch processing using list comprehension."""
+        # Leverages lru_cache for repeated items in batch
+        return [self._heavy_computation(item) for item in items]
 
-def get_choice(prompt: str, options: List[str]) -> Optional[str]:
-    """Prompt user to select from list of options."""
-    print(prompt)
-    for i, opt in enumerate(options, 1):
-        print(f"  {i}. {opt}")
-    try:
-        choice = int(input("Enter choice: ").strip())
-        if 1 <= choice <= len(options):
-            return options[choice - 1]
-    except (ValueError, EOFError, KeyboardInterrupt):
-        pass
-    return None
+    def get_performance_stats(self) -> Dict[str, Any]:
+        """Retrieve performance metrics."""
+        cache_info = self._heavy_computation.cache_info()
+        return {
+            "manual_cache_size": len(self._cache),
+            "lru_cache_hits": cache_info.hits,
+            "lru_cache_misses": cache_info.misses,
+            "manual_hits": self._stats["hits"],
+            "total_calls": self._stats["calls"]
+        }
+
+def execute_core_task(task_type: str, data: Optional[List[str]] = None) -> Dict[str, Any]:
+    """Main entry point for core module tasks."""
+    if data is None:
+        data = []
+    core = CoreModule()
+    if task_type == "process":
+        return {"results": core.process_data(data)}
+    elif task_type == "batch":
+        return {"results": core.batch_process(data), "stats": core.get_performance_stats()}
+    else:
+        return {"error": "Invalid task type"}
