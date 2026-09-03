@@ -1,75 +1,57 @@
 import os
 import re
-from typing import Any, Dict
+from typing import Union
 
-def validate_positive_integer(value: Any, field_name: str = "value") -> int:
-    """Validate positive integer, handling None, non-int, <=0."""
-    if value is None:
-        raise ValueError(f"{field_name} cannot be None")
+def validate_port(port: Union[int, str]) -> int:
+    """Validate that the given value is a valid TCP/UDP port number.
+
+    Args:
+        port: The port value to test, either as an integer or string.
+
+    Returns:
+        The parsed port number as an integer.
+
+    Raises:
+        ValueError: If the port is not an integer or is outside the range 1-65535.
+    """
     try:
-        num = int(value)
-    except (ValueError, TypeError) as exc:
-        raise ValueError(f"{field_name} must be an integer, got {type(value).__name__}") from exc
-    if num <= 0:
-        raise ValueError(f"{field_name} must be positive, got {num}")
-    return num
+        parsed_port = int(port)
+    except (TypeError, ValueError) as err:
+        raise ValueError(f"Invalid port representation: {port}") from err
 
-def validate_non_empty_string(value: Any, field_name: str = "value", max_len: int = 100) -> str:
-    """Validate non-empty string within length, handling type and whitespace."""
-    if value is None:
-        raise ValueError(f"{field_name} cannot be None")
-    if not isinstance(value, str):
-        raise TypeError(f"{field_name} must be a string")
-    stripped = value.strip()
-    if len(stripped) == 0:
-        raise ValueError(f"{field_name} cannot be empty or only whitespace")
-    if len(stripped) > max_len:
-        raise ValueError(f"{field_name} exceeds maximum length of {max_len}")
-    return stripped
+    if not (1 <= parsed_port <= 65535):
+        raise ValueError(f"Port {parsed_port} is out of the valid range (1-65535)")
 
-def validate_file_path(path: Any, field_name: str = "path", must_exist: bool = False) -> str:
-    """Validate and normalize path, optional existence check."""
-    if not isinstance(path, str):
-        raise TypeError(f"{field_name} must be a string")
-    if not path or not path.strip():
-        raise ValueError(f"{field_name} cannot be empty")
-    normalized = os.path.normpath(path.strip())
-    if must_exist and not os.path.exists(normalized):
-        raise FileNotFoundError(f"{field_name} does not exist: {normalized}")
-    return normalized
+    return parsed_port
 
-def validate_email_address(email: Any, field_name: str = "email") -> str:
-    """Validate email format with regex after basic checks."""
-    if email is None:
-        raise ValueError(f"{field_name} cannot be None")
-    if not isinstance(email, str):
-        raise TypeError(f"{field_name} must be a string")
-    stripped = email.strip()
-    if not stripped:
-        raise ValueError(f"{field_name} cannot be empty")
-    pattern = r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
-    if not re.match(pattern, stripped):
-        raise ValueError(f"{field_name} has invalid format")
-    return stripped.lower()
+def validate_ip(ip_address: str) -> bool:
+    """Determine whether the specified string is a valid IPv4 address.
 
-def validate_cli_args(args: Dict[str, Any]) -> Dict[str, Any]:
-    """Validate CLI args dict with field-specific validators."""
-    if not isinstance(args, dict):
-        raise TypeError("Arguments must be provided as a dictionary")
-    if len(args) == 0:
-        raise ValueError("No arguments provided")
-    validated: Dict[str, Any] = {}
-    for key, val in args.items():
-        if key == "count":
-            validated[key] = validate_positive_integer(val, key)
-        elif key == "name":
-            validated[key] = validate_non_empty_string(val, key, 50)
-        elif key == "path":
-            validated[key] = validate_file_path(val, key, must_exist=False)
-        elif key == "email":
-            validated[key] = validate_email_address(val, key)
-        else:
-            if val is None:
-                raise ValueError(f"Value for {key} cannot be None")
-            validated[key] = val
-    return validated
+    Args:
+        ip_address: The string containing the candidate IP address.
+
+    Returns:
+        True if the string matches the IPv4 pattern, False otherwise.
+    """
+    if not isinstance(ip_address, str):
+        return False
+    
+    ipv4_pattern = r"^(?:[0-9]{1,3}[.]){3}[0-9]{1,3}$"
+    if not re.match(ipv4_pattern, ip_address):
+        return False
+    
+    parts = ip_address.split('.')
+    return all(0 <= int(part) <= 255 for part in parts)
+
+def validate_existing_file(filepath: str) -> bool:
+    """Check if the given path exists and points to a file.
+
+    Args:
+        filepath: The filesystem path to verify.
+
+    Returns:
+        True if the path is a file and exists, False otherwise.
+    """
+    if not filepath or not isinstance(filepath, str):
+        return False
+    return os.path.isfile(filepath)
