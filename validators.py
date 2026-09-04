@@ -1,57 +1,39 @@
-import os
-import re
-from typing import Union
+import logging
+from typing import Any, Optional
 
-def validate_port(port: Union[int, str]) -> int:
-    """Validate that the given value is a valid TCP/UDP port number.
+logger = logging.getLogger(__name__)
 
-    Args:
-        port: The port value to test, either as an integer or string.
-
-    Returns:
-        The parsed port number as an integer.
-
-    Raises:
-        ValueError: If the port is not an integer or is outside the range 1-65535.
-    """
+def validate_input_config(data: Any) -> bool:
+    """Validates dictionary configuration structure."""
     try:
-        parsed_port = int(port)
-    except (TypeError, ValueError) as err:
-        raise ValueError(f"Invalid port representation: {port}") from err
-
-    if not (1 <= parsed_port <= 65535):
-        raise ValueError(f"Port {parsed_port} is out of the valid range (1-65535)")
-
-    return parsed_port
-
-def validate_ip(ip_address: str) -> bool:
-    """Determine whether the specified string is a valid IPv4 address.
-
-    Args:
-        ip_address: The string containing the candidate IP address.
-
-    Returns:
-        True if the string matches the IPv4 pattern, False otherwise.
-    """
-    if not isinstance(ip_address, str):
+        if not isinstance(data, dict):
+            raise ValueError("Configuration must be a dictionary")
+        
+        if not data:
+            logger.warning("Empty configuration provided")
+            return False
+            
+        if "version" not in data:
+            raise KeyError("Missing mandatory field: version")
+            
+        return True
+    except (ValueError, KeyError) as e:
+        logger.error(f"Configuration validation error: {e}")
         return False
+    except Exception as e:
+        logger.critical(f"Unexpected error during validation: {e}")
+        return False
+
+def sanitize_path(path: Optional[str]) -> str:
+    """Ensures path input is safe and valid."""
+    if not path:
+        logger.error("Null path provided for sanitization")
+        return ""
     
-    ipv4_pattern = r"^(?:[0-9]{1,3}[.]){3}[0-9]{1,3}$"
-    if not re.match(ipv4_pattern, ip_address):
-        return False
-    
-    parts = ip_address.split('.')
-    return all(0 <= int(part) <= 255 for part in parts)
-
-def validate_existing_file(filepath: str) -> bool:
-    """Check if the given path exists and points to a file.
-
-    Args:
-        filepath: The filesystem path to verify.
-
-    Returns:
-        True if the path is a file and exists, False otherwise.
-    """
-    if not filepath or not isinstance(filepath, str):
-        return False
-    return os.path.isfile(filepath)
+    try:
+        # Ensure path is string and remove null bytes
+        cleaned_path = str(path).replace("\0", "")
+        return cleaned_path.strip()
+    except Exception as e:
+        logger.error(f"Path sanitization failure: {e}")
+        return ""
