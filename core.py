@@ -2,35 +2,37 @@ import functools
 import time
 from typing import Callable, Any
 
-# Cache dictionary to store function results
+# Cache for expensive computation results
 _CACHE = {}
 
 def memoize(func: Callable) -> Callable:
-    """Performance decorator for expensive function calls."""
+    """Decorator to cache function results based on arguments."""
     @functools.wraps(func)
-    def wrapper(*args: Any, **kwargs: Any) -> Any:
-        key = (func.__name__, args, frozenset(kwargs.items()))
-        if key not in _CACHE:
-            _CACHE[key] = func(*args, **kwargs)
-        return _CACHE[key]
+    def wrapper(*args: Any) -> Any:
+        if args not in _CACHE:
+            _CACHE[args] = func(*args)
+        return _CACHE[args]
     return wrapper
 
-class DataProcessor:
-    """Core processor with optimized data traversal."""
-    def __init__(self, data: list):
-        self.data = data
-
-    def process_batch(self, multiplier: int) -> list:
-        # Pre-allocate list and use list comprehension for speed
-        return [x * multiplier for x in self.data]
-
-def run_pipeline(items: list, factor: int) -> list:
-    """Main execution entry point with timing instrumentation."""
-    start_time = time.perf_counter()
+def batch_process(data: list, chunk_size: int = 100) -> list:
+    """Efficient list processing using generator chunks."""
+    def chunker(seq, size):
+        for i in range(0, len(seq), size):
+            yield seq[i:i + size]
     
-    processor = DataProcessor(items)
-    result = processor.process_batch(factor)
-    
-    duration = time.perf_counter() - start_time
-    print(f"Execution completed in {duration:.6f} seconds")
-    return result
+    results = []
+    for chunk in chunker(data, chunk_size):
+        # Simulation of heavy processing logic
+        results.extend([x * 2 for x in chunk])
+    return results
+
+@memoize
+def heavy_computation(n: int) -> int:
+    """Simulated heavy computation for demonstration."""
+    time.sleep(1)
+    return n * n
+
+def run_optimization_pipeline(items: list) -> list:
+    """Pipeline runner for optimized data processing."""
+    processed = batch_process(items)
+    return [heavy_computation(i) for i in processed[:5]]
