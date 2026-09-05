@@ -1,45 +1,47 @@
-import logging
 import os
+import logging
 from logging.handlers import RotatingFileHandler
-
+from typing import Optional
 
 def setup_logger(
     name: str = "cli_helper",
-    log_file: str = "cli_helper.log",
-    max_bytes: int = 1048576,
-    backup_count: int = 5,
+    log_file: Optional[str] = "cli_helper.log",
     level: int = logging.INFO,
+    max_bytes: int = 5 * 1024 * 1024,
+    backup_count: int = 3
 ) -> logging.Logger:
-    """Configures and returns a logger with console and rotating file handlers."""
+    """
+    Configures and returns a logger with both console and rotating file outputs.
+    """
     logger = logging.getLogger(name)
     logger.setLevel(level)
 
-    if not logger.handlers:
-        formatter = logging.Formatter(
-            fmt="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-            datefmt="%Y-%m-%d %H:%M:%S",
+    if logger.handlers:
+        return logger
+
+    formatter = logging.Formatter(
+        fmt="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S"
+    )
+
+    console_handler = logging.StreamHandler()
+    console_handler.setLevel(level)
+    console_handler.setFormatter(formatter)
+    logger.addHandler(console_handler)
+
+    if log_file:
+        log_dir = os.path.dirname(log_file)
+        if log_dir:
+            os.makedirs(log_dir, exist_ok=True)
+
+        file_handler = RotatingFileHandler(
+            log_file,
+            maxBytes=max_bytes,
+            backupCount=backup_count,
+            encoding="utf-8"
         )
-
-        # Console Handler
-        console_handler = logging.StreamHandler()
-        console_handler.setFormatter(formatter)
-        logger.addHandler(console_handler)
-
-        # Rotating File Handler
-        try:
-            log_dir = os.path.dirname(os.path.abspath(log_file))
-            if log_dir and not os.path.exists(log_dir):
-                os.makedirs(log_dir, exist_ok=True)
-
-            file_handler = RotatingFileHandler(
-                log_file,
-                maxBytes=max_bytes,
-                backupCount=backup_count,
-                encoding="utf-8",
-            )
-            file_handler.setFormatter(formatter)
-            logger.addHandler(file_handler)
-        except Exception as e:
-            logger.error(f"Failed to set up file logging: {e}")
+        file_handler.setLevel(level)
+        file_handler.setFormatter(formatter)
+        logger.addHandler(file_handler)
 
     return logger
