@@ -1,43 +1,55 @@
 # cli-helper-26
 
-A powerful command-line interface (CLI) helper written in Python that simplifies the process of managing common CLI tasks. With `cli-helper-26`, you can enhance your productivity by utilizing a set of intuitive commands streamlined for everyday use.
+`cli-helper-26` is a lightweight Python toolkit designed to streamline command-line interface development by automating repetitive boilerplate tasks. It provides a robust abstraction layer for handling subcommands, configuration parsing, and terminal formatting with minimal code.
 
 ## Features
-- **Task Management**: Easily manage and execute predefined tasks with simple commands.
-- **File Operations**: Perform common file operations like copying, moving, and deleting files with built-in safety checks to prevent accidental data loss.
-- **Environment Setup**: Quickly set up your development environment with preconfigured scripts for installing packages and dependencies.
-- **User Configuration**: Customize the CLI behavior and preferences through a user-friendly configuration file.
+
+*   **Subcommand Auto-Routing:** Automatically maps command-line arguments to function signatures, removing the need for complex `argparse` nesting.
+*   **Built-in Config Manager:** Seamlessly integrates with YAML and JSON files to load local tool settings or user preferences.
+*   **Styled Output API:** Includes helper methods for consistent logging, progress bars, and color-coded status messages compatible with all standard terminals.
+*   **Zero-Dependency Core:** Built using only Python standard libraries to ensure portability and high performance across environments.
 
 ## Installation
 
-To install `cli-helper-26`, ensure you have Python 3.6 or higher installed on your system. Then, run the following command to get started:
+Install the package directly from PyPI using `pip`:
 
 ```bash
 pip install cli-helper-26
 ```
 
-## Basic Usage
-
-Once installed, you can start using `cli-helper-26` directly from your terminal. Here’s a quick example of how to create and manage a basic task:
+Alternatively, for development installation, clone the repository:
 
 ```bash
-# Initialize a new task
-cli-helper create-task "Backup Files"
-
-# List all tasks
-cli-helper list-tasks
-
-# Execute a specific task
-cli-helper run-task "Backup Files"
+git clone https://github.com/Developer/cli-helper-26.git
+cd cli-helper-26
+pip install -e .
 ```
 
-For a full list of commands and options, you can always check the help command with:
+## Basic Usage
+
+Initialize your CLI app by inheriting from the `BaseCLI` class to enable automatic command registration:
+
+```python
+from cli_helper import BaseCLI
+
+class MyTool(BaseCLI):
+    def run_greet(self, name: str = "World"):
+        """Greet a user."""
+        self.logger.info(f"Hello, {name}!")
+
+if __name__ == "__main__":
+    MyTool().run()
+```
+
+Run your new CLI tool from the terminal:
 
 ```bash
-cli-helper --help
+python main.py greet --name "Developer"
+# Output: [INFO] Hello, Developer!
 ```
 
 ## License
 
-![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)  
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
