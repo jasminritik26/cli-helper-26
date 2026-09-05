@@ -1,28 +1,29 @@
-import time
-import functools
-import logging
+from typing import List, Optional, Dict, Any
+import os
 
-logger = logging.getLogger(__name__)
+def format_path(path: str) -> str:
+    """Normalize and expand user path for consistent file access."""
+    return os.path.expanduser(os.path.normpath(path))
 
-def retry_operation(max_retries=3, delay=2, backoff=2):
-    """
-    Decorator for retrying network operations with exponential backoff.
-    """
-    def decorator(func):
-        @functools.wraps(func)
-        def wrapper(*args, **kwargs):
-            current_delay = delay
-            for attempt in range(max_retries):
-                try:
-                    return func(*args, **kwargs)
-                except (ConnectionError, TimeoutError) as e:
-                    if attempt == max_retries - 1:
-                        logger.error(f"Final attempt {attempt + 1} failed: {e}")
-                        raise
-                    
-                    logger.warning(f"Attempt {attempt + 1} failed, retrying in {current_delay}s...")
-                    time.sleep(current_delay)
-                    current_delay *= backoff
-            return None
-        return wrapper
-    return decorator
+def chunk_list(items: List[Any], size: int) -> List[List[Any]]:
+    """Split a list into smaller segments of a specified size."""
+    if size <= 0:
+        return [items]
+    return [items[i:i + size] for i in range(0, len(items), size)]
+
+def merge_configs(base: Dict[str, Any], override: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    """Update base dictionary with non-null values from override."""
+    config = base.copy()
+    if override:
+        for key, value in override.items():
+            if value is not None:
+                config[key] = value
+    return config
+
+def validate_name(name: str) -> bool:
+    """Check if a string contains only alphanumeric characters."""
+    return bool(name and name.isalnum())
+
+def get_environment_info(key: str, default: str = "unknown") -> str:
+    """Retrieve system environment variables with a fallback value."""
+    return os.environ.get(key, default)
