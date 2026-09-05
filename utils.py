@@ -2,36 +2,27 @@ import time
 import functools
 import logging
 
-logger = logging.getLogger("cli-helper-26")
+logger = logging.getLogger(__name__)
 
-def retry(max_attempts=3, delay=1.0, backoff=2.0, exceptions=(Exception,)):
-    """Decorator to retry network operations with exponential backoff."""
+def retry_operation(max_retries=3, delay=2, backoff=2):
+    """
+    Decorator for retrying network operations with exponential backoff.
+    """
     def decorator(func):
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
             current_delay = delay
-            for attempt in range(1, max_attempts + 1):
+            for attempt in range(max_retries):
                 try:
                     return func(*args, **kwargs)
-                except exceptions as e:
-                    if attempt == max_attempts:
-                        logger.error(f"Operation {func.__name__} failed after {max_attempts} attempts.")
+                except (ConnectionError, TimeoutError) as e:
+                    if attempt == max_retries - 1:
+                        logger.error(f"Final attempt {attempt + 1} failed: {e}")
                         raise
                     
-                    logger.warning(f"Attempt {attempt} failed for {func.__name__}: {e}. Retrying in {current_delay}s...")
+                    logger.warning(f"Attempt {attempt + 1} failed, retrying in {current_delay}s...")
                     time.sleep(current_delay)
                     current_delay *= backoff
+            return None
         return wrapper
     return decorator
-
-def safe_request(url, timeout=5):
-    """Simulated network request helper."""
-    import urllib.request
-    import urllib.error
-    
-    @retry(max_attempts=3, delay=0.5, exceptions=(urllib.error.URLError, TimeoutError))
-    def _execute():
-        with urllib.request.urlopen(url, timeout=timeout) as response:
-            return response.read().decode('utf-8')
-            
-    return _execute()
