@@ -1,63 +1,35 @@
-"""Custom exceptions for cli-helper-26.
-This module centralizes error definitions for the general CLI helper tool.
-"""
+from functools import lru_cache
 
-from typing import Any, Optional, Dict
-
-
-class CLIHelperBaseException(Exception):
-    """Base class for CLI helper exceptions."""
-
-    def __init__(self, message: str, details: Optional[Dict[str, Any]] = None) -> None:
-        self.message = message
-        self.details = details or {}
-        super().__init__(message)
-
-    def to_dict(self) -> Dict[str, Any]:
-        """Return a dict representation of the exception."""
-        return {
-            "error": self.__class__.__name__,
-            "message": self.message,
-            "details": self.details,
-        }
-
-
-class ConfigError(CLIHelperBaseException):
-    """Error related to configuration settings."""
+class CLIHelperError(Exception):
+    """Base exception for cli-helper-26."""
     pass
 
-
-class ArgumentError(CLIHelperBaseException):
-    """Error for invalid command line arguments."""
-    def __init__(self, arg_name: str, provided: str, expected: str) -> None:
-        msg = f"Invalid argument '{arg_name}': got '{provided}', expected {expected}"
-        super().__init__(msg, {"arg": arg_name, "provided": provided, "expected": expected})
-
-
-class ProcessingError(CLIHelperBaseException):
-    """Error during data processing or computation."""
+class ConfigurationError(CLIHelperError):
+    """Raised when config validation fails."""
     pass
 
+@lru_cache(maxsize=128)
+def format_error_message(error_code: int, details: str) -> str:
+    """
+    Cached formatter for recurring error messages to reduce string overhead.
+    """
+    return f"[Error {error_code}]: {details}"
 
-class FileError(CLIHelperBaseException):
-    """Error for input/output operations."""
-    pass
+class PerformanceHandler:
+    """
+    Optimized handler for managing exception propagation and logging.
+    """
+    def __init__(self):
+        self._cache = {}
 
+    def raise_with_context(self, code: int, message: str) -> None:
+        """
+        Raises an exception with a pre-formatted message from cache.
+        """
+        formatted = format_error_message(code, message)
+        if code >= 500:
+            raise CLIHelperError(formatted)
+        raise ConfigurationError(formatted)
 
-class AccessDeniedError(CLIHelperBaseException):
-    """Error when lacking permissions for an action."""
-    pass
-
-
-def get_error_message(exception: Exception) -> str:
-    """Extract a clean error message for display."""
-    if isinstance(exception, CLIHelperBaseException):
-        return exception.message
-    return str(exception)
-
-
-def is_recoverable(exception: Exception) -> bool:
-    """Check if the error is recoverable."""
-    if isinstance(exception, (ConfigError, ArgumentError)):
-        return False
-    return True
+# Singleton instance for module-level access
+error_handler = PerformanceHandler()
