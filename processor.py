@@ -5,34 +5,41 @@ import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-def retry_operation(max_attempts=3, delay=1.0, exceptions=(Exception,)):
-    """Decorator to retry a function if specified exceptions occur."""
+def retry(exceptions, tries=3, delay=1, backoff=2):
+    """Decorator for retrying functions with exponential backoff."""
     def decorator(func):
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
-            attempts = 0
-            while attempts < max_attempts:
+            mtries, mdelay = tries, delay
+            while mtries > 1:
                 try:
                     return func(*args, **kwargs)
                 except exceptions as e:
-                    attempts += 1
-                    if attempts >= max_attempts:
-                        logger.error(f"Final attempt failed for {func.__name__}")
-                        raise e
-                    logger.warning(f"Attempt {attempts} failed, retrying in {delay}s...")
-                    time.sleep(delay)
+                    logger.warning(f"{e}, Retrying in {mdelay} seconds...")
+                    time.sleep(mdelay)
+                    mtries -= 1
+                    mdelay *= backoff
+            return func(*args, **kwargs)
         return wrapper
     return decorator
 
-@retry_operation(max_attempts=3, delay=2.0, exceptions=(ConnectionError, TimeoutError))
-def fetch_network_data(url):
-    """Example function performing a network operation."""
-    logger.info(f"Fetching data from {url}...")
-    # Simulate network instability
-    raise ConnectionError("Failed to reach server")
+class NetworkProcessor:
+    def __init__(self, timeout=5):
+        self.timeout = timeout
+
+    @retry((ConnectionError, TimeoutError), tries=3, delay=2)
+    def fetch_data(self, endpoint):
+        """Simulate network operation with retry support."""
+        logger.info(f"Attempting to fetch from {endpoint}")
+        # Simulated conditional failure
+        if "fail" in endpoint:
+            raise ConnectionError("Failed to connect to server")
+        return {"status": "success", "data": "sample payload"}
 
 if __name__ == "__main__":
+    processor = NetworkProcessor()
     try:
-        fetch_network_data("https://api.example.com")
+        result = processor.fetch_data("https://api.example.com/fail")
+        print(result)
     except Exception as e:
-        logger.error(f"Operation aborted: {e}")
+        logger.error(f"Final failure after retries: {e}")
