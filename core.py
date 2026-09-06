@@ -1,38 +1,44 @@
-import functools
-import time
-from typing import Callable, Any
+import sys
+from typing import List, Optional
 
-# Cache for expensive computation results
-_CACHE = {}
-
-def memoize(func: Callable) -> Callable:
-    """Decorator to cache function results based on arguments."""
-    @functools.wraps(func)
-    def wrapper(*args: Any) -> Any:
-        if args not in _CACHE:
-            _CACHE[args] = func(*args)
-        return _CACHE[args]
-    return wrapper
-
-def batch_process(data: list, chunk_size: int = 100) -> list:
-    """Efficient list processing using generator chunks."""
-    def chunker(seq, size):
-        for i in range(0, len(seq), size):
-            yield seq[i:i + size]
+class CLIHandler:
+    """Core controller for CLI interaction management."""
     
-    results = []
-    for chunk in chunker(data, chunk_size):
-        # Simulation of heavy processing logic
-        results.extend([x * 2 for x in chunk])
-    return results
+    def __init__(self, debug: bool = False):
+        self.debug = debug
+        self.commands = {}
 
-@memoize
-def heavy_computation(n: int) -> int:
-    """Simulated heavy computation for demonstration."""
-    time.sleep(1)
-    return n * n
+    def register_command(self, name: str, func: callable) -> None:
+        """Registers a callback for a specific command keyword."""
+        self.commands[name] = func
 
-def run_optimization_pipeline(items: list) -> list:
-    """Pipeline runner for optimized data processing."""
-    processed = batch_process(items)
-    return [heavy_computation(i) for i in processed[:5]]
+    def run(self, args: List[str]) -> None:
+        """Parses arguments and executes matching command."""
+        if not args:
+            print("Usage: cli-helper-26 <command>")
+            return
+
+        command_name = args[0]
+        if command_name in self.commands:
+            try:
+                self.commands[command_name](args[1:])
+            except Exception as e:
+                self._handle_error(e)
+        else:
+            print(f"Unknown command: {command_name}")
+
+    def _handle_error(self, error: Exception) -> None:
+        """Centralized error reporting."""
+        print(f"Error: {error}", file=sys.stderr)
+        if self.debug:
+            import traceback
+            traceback.print_exc()
+
+def main():
+    """Entry point for CLI execution."""
+    handler = CLIHandler(debug=False)
+    # Execution logic
+    handler.run(sys.argv[1:])
+
+if __name__ == "__main__":
+    main()
