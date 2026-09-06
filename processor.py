@@ -1,45 +1,40 @@
-import time
-import functools
-import logging
+import sys
 
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+def validate_input(user_input):
+    """Checks if input is a non-empty string and not numeric."""
+    if not user_input or not user_input.strip():
+        return False, "Input cannot be empty."
+    if user_input.isdigit():
+        return False, "Input cannot be a number."
+    return True, ""
 
-def retry(exceptions, tries=3, delay=1, backoff=2):
-    """Decorator for retrying functions with exponential backoff."""
-    def decorator(func):
-        @functools.wraps(func)
-        def wrapper(*args, **kwargs):
-            mtries, mdelay = tries, delay
-            while mtries > 1:
-                try:
-                    return func(*args, **kwargs)
-                except exceptions as e:
-                    logger.warning(f"{e}, Retrying in {mdelay} seconds...")
-                    time.sleep(mdelay)
-                    mtries -= 1
-                    mdelay *= backoff
-            return func(*args, **kwargs)
-        return wrapper
-    return decorator
+def run_processing_loop():
+    """Main execution loop with input validation."""
+    print("Starting cli-helper-26 processor. Type 'exit' to quit.")
+    
+    while True:
+        try:
+            raw_data = input(">>> ").strip()
+            
+            if raw_data.lower() == 'exit':
+                print("Exiting processor.")
+                break
+                
+            is_valid, error_msg = validate_input(raw_data)
+            
+            if not is_valid:
+                print(f"Validation error: {error_msg}")
+                continue
+                
+            # Processing logic
+            result = raw_data.upper()
+            print(f"Result: {result}")
+            
+        except EOFError:
+            break
+        except KeyboardInterrupt:
+            print("\nProcess interrupted by user.")
+            break
 
-class NetworkProcessor:
-    def __init__(self, timeout=5):
-        self.timeout = timeout
-
-    @retry((ConnectionError, TimeoutError), tries=3, delay=2)
-    def fetch_data(self, endpoint):
-        """Simulate network operation with retry support."""
-        logger.info(f"Attempting to fetch from {endpoint}")
-        # Simulated conditional failure
-        if "fail" in endpoint:
-            raise ConnectionError("Failed to connect to server")
-        return {"status": "success", "data": "sample payload"}
-
-if __name__ == "__main__":
-    processor = NetworkProcessor()
-    try:
-        result = processor.fetch_data("https://api.example.com/fail")
-        print(result)
-    except Exception as e:
-        logger.error(f"Final failure after retries: {e}")
+if __name__ == '__main__':
+    run_processing_loop()
