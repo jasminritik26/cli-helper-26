@@ -1,25 +1,29 @@
 import re
 
-# Validation patterns for CLI input fields
-VALID_NAME_PATTERN = re.compile(r'^[a-zA-Z0-9_-]{3,20}$')
-VALID_EMAIL_PATTERN = re.compile(r'^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$')
+def validate_input(user_input, pattern=r'^[a-zA-Z0-9_\s]+$'):
+    """Validates user input against a regex pattern."""
+    if not user_input or not isinstance(user_input, str):
+        return False, "Input cannot be empty."
+    
+    if not re.match(pattern, user_input):
+        return False, "Input contains invalid characters."
+    
+    return True, "Success"
 
-def validate_user_input(value: str, field_type: str) -> bool:
-    """Validates input against predefined regex patterns."""
-    if field_type == 'username':
-        return bool(VALID_NAME_PATTERN.match(value))
-    if field_type == 'email':
-        return bool(VALID_EMAIL_PATTERN.match(value))
-    return False
+def process_main_loop():
+    """Main loop for cli-helper-26 input processing."""
+    while True:
+        user_data = input("cli-helper-26> ")
+        if user_data.lower() in ['exit', 'quit']:
+            break
 
-def sanitize_input(value: str) -> str:
-    """Removes potentially harmful characters from input."""
-    return "".join(char for char in value if char.isalnum() or char in "-_.")
+        is_valid, message = validate_input(user_data)
+        if not is_valid:
+            print(f"Validation error: {message}")
+            continue
 
-def validate_loop_input(data: dict) -> bool:
-    """Checks all required fields in the processing loop."""
-    required = ['username', 'email']
-    for field in required:
-        if field not in data or not validate_user_input(data[field], field):
-            return False
-    return True
+        # Process validated input here
+        print(f"Processing: {user_data}")
+
+if __name__ == "__main__":
+    process_main_loop()
