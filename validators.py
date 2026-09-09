@@ -1,27 +1,37 @@
-import os
+import time
+import functools
+import logging
 
-def validate_path(path: str) -> bool:
-    """Checks if a path exists and is readable."""
-    try:
-        if not path or not isinstance(path, str):
-            return False
-        return os.path.exists(path) and os.access(path, os.R_OK)
-    except (OSError, TypeError):
+logger = logging.getLogger(__name__)
+
+def retry_operation(max_retries=3, delay=1.0, backoff=2.0, exceptions=(Exception,)):
+    """Decorator to retry network operations with exponential backoff."""
+    def decorator(func):
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            current_delay = delay
+            last_exception = None
+
+            for attempt in range(max_retries + 1):
+                try:
+                    return func(*args, **kwargs)
+                except exceptions as e:
+                    last_exception = e
+                    if attempt < max_retries:
+                        logger.warning(f"Attempt {attempt + 1} failed: {e}. Retrying in {current_delay}s...")
+                        time.sleep(current_delay)
+                        current_delay *= backoff
+                    else:
+                        logger.error(f"Max retries reached. Final failure: {e}")
+            
+            raise last_exception
+        return wrapper
+    return decorator
+
+def validate_network_response(response):
+    """Basic validation for network response objects."""
+    if response is None:
         return False
-
-def validate_integer(value: any, min_val: int = 0, max_val: int = 100) -> int:
-    """Safely parses input to integer within bounds."""
-    try:
-        parsed = int(value)
-        if min_val <= parsed <= max_val:
-            return parsed
-        return min_val
-    except (ValueError, TypeError):
-        return min_val
-
-def sanitize_input(user_input: str) -> str:
-    """Removes potential shell injection characters."""
-    if not user_input:
-        return ""
-    forbidden = [';', '&', '|', '>', '<', '`', '$']
-    return ''.join(char for char in user_input if char not in forbidden).strip()
+    if hasattr(response, 'status_code') and 200 <= response.status_code < 300:
+        return True
+    return False
