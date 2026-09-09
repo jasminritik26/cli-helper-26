@@ -1,30 +1,30 @@
-import collections
-from typing import Any, Callable, Iterable, Iterator, List
+import json
+from typing import Any, Dict, Optional
 
-class BatchProcessor:
-    """Efficiently processes large streams of data in chunks to optimize memory usage and performance."""
+def clean_data(data: Any) -> Any:
+    """Recursively strips whitespace from string values in dicts/lists."""
+    if isinstance(data, dict):
+        return {k: clean_data(v) for k, v in data.items()}
+    elif isinstance(data, list):
+        return [clean_data(item) for item in data]
+    elif isinstance(data, str):
+        return data.strip()
+    return data
 
-    def __init__(self, batch_size: int = 1000):
-        if batch_size <= 0:
-            raise ValueError("Batch size must be greater than zero.")
-        self.batch_size = batch_size
+def safe_load_json(file_path: str) -> Optional[Dict[str, Any]]:
+    """Reads and cleans json file content."""
+    try:
+        with open(file_path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+            return clean_data(data)
+    except (FileNotFoundError, json.JSONDecodeError):
+        return None
 
-    def _chunk_iterable(self, iterable: Iterable[Any]) -> Iterator[List[Any]]:
-        """Splits an iterable into chunks of size batch_size without loading everything into memory."""
-        iterator = iter(iterable)
-        while True:
-            chunk = []
-            for _ in range(self.batch_size):
-                try:
-                    chunk.append(next(iterator))
-                except StopIteration:
-                    if chunk:
-                        yield chunk
-                    return
-            yield chunk
+def format_output(data: Any, indent: int = 4) -> str:
+    """Serializes data to formatted json string."""
+    return json.dumps(data, indent=indent, sort_keys=True)
 
-    def process(self, data_stream: Iterable[Any], transform_func: Callable[[Any], Any]) -> Iterator[Any]:
-        """Applies transformation function to data stream using list-comprehension optimized batching."""
-        for chunk in self._chunk_iterable(data_stream):
-            processed_chunk = [transform_func(item) for item in chunk]
-            yield from processed_chunk
+if __name__ == '__main__':
+    # Example usage for verification
+    sample = {" name ": "  developer  ", "items": ["  a ", " b  "]}
+    print(format_output(clean_data(sample)))
