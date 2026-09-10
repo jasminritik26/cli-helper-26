@@ -1,30 +1,31 @@
-import json
-from typing import Any, Dict, Optional
+from typing import List, Dict, Optional, Any
 
-def clean_data(data: Any) -> Any:
-    """Recursively strips whitespace from string values in dicts/lists."""
-    if isinstance(data, dict):
-        return {k: clean_data(v) for k, v in data.items()}
-    elif isinstance(data, list):
-        return [clean_data(item) for item in data]
-    elif isinstance(data, str):
-        return data.strip()
-    return data
+class DataProcessor:
+    """Handles transformation and validation of CLI input data."""
 
-def safe_load_json(file_path: str) -> Optional[Dict[str, Any]]:
-    """Reads and cleans json file content."""
-    try:
-        with open(file_path, 'r', encoding='utf-8') as f:
-            data = json.load(f)
-            return clean_data(data)
-    except (FileNotFoundError, json.JSONDecodeError):
-        return None
+    def __init__(self, prefix: str = "cli-") -> None:
+        self.prefix: str = prefix
 
-def format_output(data: Any, indent: int = 4) -> str:
-    """Serializes data to formatted json string."""
-    return json.dumps(data, indent=indent, sort_keys=True)
+    def sanitize_input(self, data: List[str]) -> List[str]:
+        """Removes empty strings and applies prefixes to valid inputs."""
+        return [f"{self.prefix}{item.strip()}" for item in data if item.strip()]
 
-if __name__ == '__main__':
-    # Example usage for verification
-    sample = {" name ": "  developer  ", "items": ["  a ", " b  "]}
-    print(format_output(clean_data(sample)))
+    def format_results(self, items: List[str]) -> Dict[str, Any]:
+        """Converts a list of items into a metadata dictionary."""
+        return {
+            "count": len(items),
+            "items": items,
+            "status": "processed"
+        }
+
+    def validate_keys(self, config: Dict[str, Any], required: List[str]) -> bool:
+        """Checks if all required keys exist in the configuration dictionary."""
+        return all(key in config for key in required)
+
+    def process_batch(self, raw_data: Optional[List[str]]) -> Dict[str, Any]:
+        """Main orchestration method for batch processing routines."""
+        if not raw_data:
+            return {"count": 0, "items": [], "status": "empty"}
+
+        clean_data = self.sanitize_input(raw_data)
+        return self.format_results(clean_data)
