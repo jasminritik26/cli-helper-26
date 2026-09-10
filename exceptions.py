@@ -1,35 +1,33 @@
-from functools import lru_cache
-
 class CLIHelperError(Exception):
-    """Base exception for cli-helper-26."""
+    """Base exception for all cli-helper-26 errors."""
     pass
 
 class ConfigurationError(CLIHelperError):
     """Raised when config validation fails."""
     pass
 
-@lru_cache(maxsize=128)
-def format_error_message(error_code: int, details: str) -> str:
-    """
-    Cached formatter for recurring error messages to reduce string overhead.
-    """
-    return f"[Error {error_code}]: {details}"
+class ValidationError(CLIHelperError):
+    """Raised when input parameters fail constraints."""
+    pass
 
-class PerformanceHandler:
-    """
-    Optimized handler for managing exception propagation and logging.
-    """
-    def __init__(self):
-        self._cache = {}
+class ExecutionError(CLIHelperError):
+    """Raised when a core process fails."""
+    def __init__(self, message, exit_code=1):
+        super().__init__(message)
+        self.exit_code = exit_code
 
-    def raise_with_context(self, code: int, message: str) -> None:
-        """
-        Raises an exception with a pre-formatted message from cache.
-        """
-        formatted = format_error_message(code, message)
-        if code >= 500:
-            raise CLIHelperError(formatted)
-        raise ConfigurationError(formatted)
+def raise_if_none(value, name):
+    """Utility to validate mandatory configuration values."""
+    if value is None:
+        raise ValidationError(f"Mandatory value '{name}' cannot be None")
 
-# Singleton instance for module-level access
-error_handler = PerformanceHandler()
+def handle_execution_context(func):
+    """Decorator to wrap functions in generic error handlers."""
+    def wrapper(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except CLIHelperError:
+            raise
+        except Exception as e:
+            raise ExecutionError(f"Unexpected error: {str(e)}") from e
+    return wrapper
