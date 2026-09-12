@@ -1,30 +1,33 @@
-import subprocess
 import sys
-from typing import Optional, List
+import shutil
 
-def format_color(text: str, color_code: str) -> str:
-    """Wraps text in ANSI escape codes for terminal coloring."""
-    return f"\u001b[{color_code}m{text}\u001b[0m"
 
-def prompt_confirm(question: str, default: bool = True) -> bool:
-    """Prompts the user for a yes/no confirmation."""
-    valid = {"yes": True, "y": True, "ye": True, "no": False, "n": False}
-    prompt = " [Y/n]: " if default else " [y/N]: "
-    
-    while True:
-        sys.stdout.write(question + prompt)
-        choice = input().lower().strip()
-        if choice == "" and default is not None:
-            return default
-        elif choice in valid:
-            return valid[choice]
-        else:
-            sys.stdout.write("Please respond with 'yes' or 'no' (or 'y' or 'n').\n")
+def format_header(title: str, character: str = "=") -> str:
+    """Format a title string into a centered header block."""
+    terminal_width = shutil.get_terminal_size((80, 24)).columns
+    padding = max(0, (terminal_width - len(title) - 2) // 2)
+    border = character * padding
+    return f"{border} {title} {border}"
 
-def run_command(cmd: List[str]) -> Optional[str]:
-    """Runs a system command and returns its stdout, or None on failure."""
-    try:
-        result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, check=True)
-        return result.stdout.strip()
-    except (subprocess.CalledProcessError, FileNotFoundError):
-        return None
+
+def confirm_action(prompt: str, default: bool = False) -> bool:
+    """Prompt the user for a yes/no confirmation in the CLI."""
+    suffix = " [Y/n]: " if default else " [y/N]: "
+    user_input = input(f"{prompt}{suffix}").strip().lower()
+
+    if not user_input:
+        return default
+    return user_input in ("y", "yes")
+
+
+def print_status(message: str, success: bool = True) -> None:
+    """Print a status message with simple color indicators."""
+    prefix = "[SUCCESS]" if success else "[FAILED]"
+    print(f"{prefix} {message}", file=sys.stdout if success else sys.stderr)
+
+
+def truncate_text(text: str, max_length: int = 50, suffix: str = "...") -> str:
+    """Truncate long text to fit within standard display limits."""
+    if len(text) <= max_length:
+        return text
+    return text[: max_length - len(suffix)] + suffix
