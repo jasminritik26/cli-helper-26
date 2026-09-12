@@ -1,32 +1,52 @@
-import json
-from typing import Any, Dict, Optional
+import sys
+from typing import Callable, Dict, List, Any, Optional
 
-def load_json_file(file_path: str) -> Dict[str, Any]:
-    """Loads and parses a JSON file into a dictionary."""
-    try:
-        with open(file_path, 'r', encoding='utf-8') as f:
-            return json.load(f)
-    except (FileNotFoundError, json.JSONDecodeError) as e:
-        print(f"Error reading {file_path}: {e}")
-        return {}
+class CommandHandler:
+    """Manages registration and execution of CLI commands."""
 
-def save_json_file(file_path: str, data: Dict[str, Any]) -> bool:
-    """Serializes a dictionary to a JSON file."""
-    try:
-        with open(file_path, 'w', encoding='utf-8') as f:
-            json.dump(data, f, indent=4)
-        return True
-    except IOError as e:
-        print(f"Error writing to {file_path}: {e}")
-        return False
+    def __init__(self) -> None:
+        """Initialize the command handler with an empty command registry."""
+        self._commands: Dict[str, Callable[..., Any]] = {}
 
-def flatten_dict(d: Dict[str, Any], parent_key: str = '', sep: str = '_') -> Dict[str, Any]:
-    """Flattens a nested dictionary into a single level."""
-    items = []
-    for k, v in d.items():
-        new_key = f"{parent_key}{sep}{k}" if parent_key else k
-        if isinstance(v, dict):
-            items.extend(flatten_dict(v, new_key, sep=sep).items())
-        else:
-            items.append((new_key, v))
-    return dict(items)
+    def register(self, name: str) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
+        """Decorator to register a function as a CLI command.
+
+        Args:
+            name: The string trigger for the command.
+        """
+        def decorator(func: Callable[..., Any]) -> Callable[..., Any]:
+            self._commands[name] = func
+            return func
+        return decorator
+
+    def execute(self, name: str, *args: Any, **kwargs: Any) -> Optional[Any]:
+        """Execute a registered command with positional and keyword arguments.
+
+        Args:
+            name: The name of the command to execute.
+            *args: Positional arguments passed to the command function.
+            **kwargs: Keyword arguments passed to the command function.
+
+        Returns:
+            The return value of the executed command function, or None if failed.
+        """
+        if name not in self._commands:
+            print(f"Error: Command '{name}' is not registered.", file=sys.stderr)
+            return None
+        
+        try:
+            return self._commands[name](*args, **kwargs)
+        except TypeError as err:
+            print(f"Error: Invalid arguments for command '{name}': {err}", file=sys.stderr)
+            return None
+        except Exception as err:
+            print(f"Unhandled exception in command '{name}': {err}", file=sys.stderr)
+            raise err
+
+    def get_registered_commands(self) -> List[str]:
+        """Retrieve a list of all currently registered command names.
+
+        Returns:
+            A list of sorted command string identifiers.
+        """
+        return sorted(list(self._commands.keys()))
