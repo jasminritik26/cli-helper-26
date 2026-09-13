@@ -1,33 +1,34 @@
 import logging
 from logging.handlers import RotatingFileHandler
-import os
 
-def setup_logger(name='cli-helper-26', log_file='app.log', level=logging.INFO):
-    """Configures a rotating file logger for the application."""
+def setup_logger(name: str = "cli_helper", log_file: str = "cli_helper.log", level: int = logging.INFO) -> logging.Logger:
+    """Sets up a logger with console and rotating file handlers."""
     logger = logging.getLogger(name)
     logger.setLevel(level)
 
-    # Prevent duplicate handlers if re-initialized
-    if not logger.handlers:
-        # 5MB per file, keep 3 historical backups
-        handler = RotatingFileHandler(
-            log_file, 
-            maxBytes=5 * 1024 * 1024, 
-            backupCount=3
+    if logger.hasHandlers():
+        return logger
+
+    file_formatter = logging.Formatter(
+        "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    )
+    console_formatter = logging.Formatter(
+        "%(levelname)s: %(message)s"
+    )
+
+    try:
+        file_handler = RotatingFileHandler(
+            log_file, maxBytes=5000000, backupCount=3, encoding="utf-8"
         )
-        
-        formatter = logging.Formatter(
-            '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-        )
-        handler.setFormatter(formatter)
-        logger.addHandler(handler)
-        
-        # Optional: Add console output
-        console = logging.StreamHandler()
-        console.setFormatter(formatter)
-        logger.addHandler(console)
+        file_handler.setLevel(level)
+        file_handler.setFormatter(file_formatter)
+        logger.addHandler(file_handler)
+    except OSError:
+        pass
+
+    console_handler = logging.StreamHandler()
+    console_handler.setLevel(level)
+    console_handler.setFormatter(console_formatter)
+    logger.addHandler(console_handler)
 
     return logger
-
-# Initialization instance for import
-logger = setup_logger()
