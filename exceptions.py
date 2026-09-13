@@ -1,25 +1,36 @@
-class CLIHelperError(Exception):
+class CLIError(Exception):
     """Base exception for cli-helper-26."""
     pass
 
-class ConfigurationError(CLIHelperError):
-    """Raised when config files are missing or malformed."""
+class ValidationError(CLIError):
+    """Raised when input validation fails."""
     pass
 
-class ValidationError(CLIHelperError):
-    """Raised during input or parameter validation."""
+class ConfigError(CLIError):
+    """Raised when configuration loading fails."""
     pass
 
-class ProcessingError(CLIHelperError):
-    """Raised during core logic execution failures."""
+class ProcessingError(CLIError):
+    """Raised when data transformation fails."""
     pass
 
-class HandlerError(CLIHelperError):
-    """Raised when command handlers fail to execute."""
-    pass
+_EXCEPTION_MAP = {
+    'validation': ValidationError,
+    'config': ConfigError,
+    'processing': ProcessingError
+}
 
-def format_error(exc: Exception) -> str:
-    """Helper to format exceptions into user-friendly strings."""
-    if isinstance(exc, CLIHelperError):
-        return f"[CLI Error] {exc.__class__.__name__}: {str(exc)}"
-    return f"[Unexpected Error] {str(exc)}"
+def raise_helper_error(error_type: str, message: str):
+    """
+    Efficient exception instantiation using a cached lookup table.
+    Avoids multiple conditional checks during runtime.
+    """
+    exception_class = _EXCEPTION_MAP.get(error_type, CLIError)
+    raise exception_class(message)
+
+if __name__ == "__main__":
+    # Example of optimized exception triggering
+    try:
+        raise_helper_error('validation', 'Invalid input detected')
+    except ValidationError as e:
+        print(f"Caught expected error: {e}")
