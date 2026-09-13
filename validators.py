@@ -1,37 +1,31 @@
-import time
-import functools
-import logging
+import re
+from typing import Any, Optional
 
-logger = logging.getLogger(__name__)
+def validate_email(email: str) -> bool:
+    """Validates email string format using regex."""
+    pattern = r'^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$'
+    return bool(re.match(pattern, email))
 
-def retry_operation(max_retries=3, delay=1.0, backoff=2.0, exceptions=(Exception,)):
-    """Decorator to retry network operations with exponential backoff."""
-    def decorator(func):
-        @functools.wraps(func)
-        def wrapper(*args, **kwargs):
-            current_delay = delay
-            last_exception = None
+def sanitize_input(data: Any) -> str:
+    """Converts input to stripped string or returns empty."""
+    if data is None:
+        return ""
+    return str(data).strip()
 
-            for attempt in range(max_retries + 1):
-                try:
-                    return func(*args, **kwargs)
-                except exceptions as e:
-                    last_exception = e
-                    if attempt < max_retries:
-                        logger.warning(f"Attempt {attempt + 1} failed: {e}. Retrying in {current_delay}s...")
-                        time.sleep(current_delay)
-                        current_delay *= backoff
-                    else:
-                        logger.error(f"Max retries reached. Final failure: {e}")
-            
-            raise last_exception
-        return wrapper
-    return decorator
+def is_non_empty(value: Any) -> bool:
+    """Checks if value exists and is not whitespace."""
+    if isinstance(value, str):
+        return bool(value.strip())
+    return value is not None
 
-def validate_network_response(response):
-    """Basic validation for network response objects."""
-    if response is None:
-        return False
-    if hasattr(response, 'status_code') and 200 <= response.status_code < 300:
-        return True
-    return False
+def ensure_list(data: Any) -> list:
+    """Normalizes input to a flat list format."""
+    if data is None:
+        return []
+    if isinstance(data, (list, tuple, set)):
+        return list(data)
+    return [data]
+
+def validate_range(value: int, min_val: int, max_val: int) -> bool:
+    """Checks if integer is within inclusive boundaries."""
+    return min_val <= value <= max_val
