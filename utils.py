@@ -1,37 +1,36 @@
-import functools
-import time
-from typing import Callable, Any, Dict
+import json
+import os
+from typing import Any, Optional
 
-# LRU cache implementation for CPU-bound helper functions
-# Limits memory usage while improving repeat execution speed
-CACHE_SIZE = 128
+def load_data(file_path: str) -> Optional[dict]:
+    """Loads and parses JSON data from a file system path."""
+    if not os.path.exists(file_path):
+        return None
+    try:
+        with open(file_path, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except (json.JSONDecodeError, IOError):
+        return None
 
-def memoize(func: Callable) -> Callable:
-    """Decorator for caching function results based on arguments."""
-    cache: Dict[tuple, Any] = {}
+def save_data(data: Any, file_path: str) -> bool:
+    """Serializes dictionary data to a JSON file safely."""
+    try:
+        with open(file_path, 'w', encoding='utf-8') as f:
+            json.dump(data, f, indent=4, sort_keys=True)
+        return True
+    except (TypeError, IOError):
+        return False
 
-    @functools.wraps(func)
-    def wrapper(*args: Any, **kwargs: Any) -> Any:
-        key = (args, frozenset(kwargs.items()))
-        if key not in cache:
-            if len(cache) >= CACHE_SIZE:
-                cache.pop(next(iter(cache)))
-            cache[key] = func(*args, **kwargs)
-        return cache[key]
-    return wrapper
+def sanitize_input(data: str) -> str:
+    """Removes trailing whitespace and normalizes line endings."""
+    if not isinstance(data, str):
+        return ""
+    return data.strip().replace('\r\n', '\n')
 
-def batch_process(items: list, chunk_size: int = 100):
-    """Generator for efficient large data set handling."""
-    for i in range(0, len(items), chunk_size):
-        yield items[i : i + chunk_size]
-
-def timed_execution(func: Callable):
-    """Decorator for monitoring performance metrics of tasks."""
-    @functools.wraps(func)
-    def wrapper(*args, **kwargs):
-        start = time.perf_counter()
-        result = func(*args, **kwargs)
-        end = time.perf_counter()
-        print(f"Execution of {func.__name__} took {end - start:.4f}s")
-        return result
-    return wrapper
+def format_byte_size(size_bytes: int) -> str:
+    """Converts byte integer to human readable string format."""
+    for unit in ['B', 'KB', 'MB', 'GB']:
+        if size_bytes < 1024:
+            return f"{size_bytes:.2f} {unit}"
+        size_bytes /= 1024
+    return f"{size_bytes:.2f} TB"
