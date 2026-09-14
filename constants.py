@@ -1,31 +1,30 @@
 from typing import Final, Dict, List
 
-# Application-wide configuration constants
-VERSION: Final[str] = "0.1.0"
+# Application configuration constants for cli-helper-26
+VERSION: Final[str] = "1.0.0"
 DEFAULT_TIMEOUT: Final[int] = 30
-MAX_RETRIES: Final[int] = 3
 
-# Supported CLI operation modes
-SUPPORTED_MODES: Final[List[str]] = ["init", "run", "status", "clean"]
+# Allowed command configurations
+SUPPORTED_COMMANDS: List[str] = ["init", "run", "status", "cleanup"]
 
-# Exit code definitions for standard errors
-EXIT_CODES: Final[Dict[str, int]] = {
+# Status code mappings for CLI operations
+STATUS_CODES: Dict[str, int] = {
     "SUCCESS": 0,
-    "GENERAL_ERROR": 1,
-    "INVALID_ARGUMENT": 2,
-    "TIMEOUT_ERROR": 3
+    "ERROR_UNKNOWN": 1,
+    "ERROR_PERMISSION": 2,
+    "ERROR_CONFIG": 3
 }
 
-def get_timeout_threshold(factor: float = 1.0) -> float:
-    """Calculates effective timeout based on a multiplier.
+# Default settings for output formatting
+BUFFER_SIZE: Final[int] = 1024
+LOG_FORMAT: Final[str] = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 
-    Args:
-        factor: A float to scale the default timeout value.
-
-    Returns:
-        The calculated timeout duration as a float.
-    """
-    return float(DEFAULT_TIMEOUT * factor)
-
-# Placeholder for system path defaults
-CACHE_DIR: Final[str] = "~/.cache/cli-helper-26"
+def get_status_message(code: int) -> str:
+    """Return a descriptive message for a given status code."""
+    messages: Dict[int, str] = {
+        0: "Operation completed successfully",
+        1: "An unknown error occurred",
+        2: "Permission denied during execution",
+        3: "Configuration file is invalid"
+    }
+    return messages.get(code, "Unknown status code encountered")
