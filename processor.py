@@ -1,37 +1,46 @@
-import sys
+import collections
+from typing import Dict, Any
 
-def validate_input(user_input):
-    """Ensures input is non-empty and within bounds."""
-    stripped = user_input.strip()
-    if not stripped:
-        return False, "Input cannot be empty."
-    if len(stripped) > 256:
-        return False, "Input exceeds character limit."
-    return True, stripped
+def flatten_dict(d: Dict[str, Any], parent_key: str = '', sep: str = '.') -> Dict[str, Any]:
+    """
+    Recursively flattens a nested dictionary into a single-level dictionary.
+    """
+    items = []
+    for k, v in d.items():
+        new_key = f"{parent_key}{sep}{k}" if parent_key else k
+        if isinstance(v, dict):
+            items.extend(flatten_dict(v, new_key, sep=sep).items())
+        else:
+            items.append((new_key, v))
+    return dict(items)
 
-def run_main_loop():
-    """Main processing loop with validation."""
-    print("CLI Helper 26 initialized. Type 'exit' to quit.")
-    
-    while True:
-        try:
-            raw = input("> ")
-            if raw.lower() == 'exit':
-                break
-            
-            is_valid, data = validate_input(raw)
-            if not is_valid:
-                print(f"Validation error: {data}")
-                continue
-            
-            # Processing logic placeholder
-            print(f"Processing: {data}")
-            
-        except EOFError:
-            break
-        except KeyboardInterrupt:
-            print("\nExiting...")
-            break
+def unflatten_dict(d: Dict[str, Any], sep: str = '.') -> Dict[str, Any]:
+    """
+    Reconstructs a nested dictionary from a flattened dictionary.
+    """
+    result = {}
+    for key, value in d.items():
+        parts = key.split(sep)
+        current = result
+        for part in parts[:-1]:
+            if part not in current or not isinstance(current[part], dict):
+                current[part] = {}
+            current = current[part]
+        current[parts[-1]] = value
+    return result
 
-if __name__ == "__main__":
-    run_main_loop()
+def remove_empty_values(d: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Recursively removes key-value pairs where the value is empty or None.
+    """
+    clean = {}
+    for k, v in d.items():
+        if v in (None, "", [], {}):
+            continue
+        if isinstance(v, dict):
+            nested = remove_empty_values(v)
+            if nested:
+                clean[k] = nested
+        else:
+            clean[k] = v
+    return clean
