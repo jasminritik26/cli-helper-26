@@ -1,37 +1,31 @@
-import os
-import sys
-from pathlib import Path
+from typing import Final, Dict, List
 
-# Application configuration defaults
-APP_NAME = "cli-helper-26"
-DEFAULT_ENCODING = "utf-8"
-LOG_LEVEL = "INFO"
+# Application-wide configuration constants
+VERSION: Final[str] = "0.1.0"
+DEFAULT_TIMEOUT: Final[int] = 30
+MAX_RETRIES: Final[int] = 3
 
-# Directory structure definitions
-BASE_DIR = Path(__file__).resolve().parent.parent
-LOG_DIR = BASE_DIR / "logs"
-CACHE_DIR = BASE_DIR / ".cache"
+# Supported CLI operation modes
+SUPPORTED_MODES: Final[List[str]] = ["init", "run", "status", "clean"]
 
-# System constraints and limits
-MAX_RETRIES = 3
-TIMEOUT_SECONDS = 30
-
-# Formatting and UI constants
-SUCCESS_PREFIX = "[+]"
-ERROR_PREFIX = "[!]"
-WARNING_PREFIX = "[*]"
-
-# Environment configuration keys
-ENV_VARS = {
-    "API_KEY": "APP_API_KEY",
-    "DEBUG_MODE": "APP_DEBUG",
-    "STORAGE_PATH": "APP_STORAGE_PATH"
+# Exit code definitions for standard errors
+EXIT_CODES: Final[Dict[str, int]] = {
+    "SUCCESS": 0,
+    "GENERAL_ERROR": 1,
+    "INVALID_ARGUMENT": 2,
+    "TIMEOUT_ERROR": 3
 }
 
-def ensure_directories():
-    """Initializes mandatory directory structure for the application."""
-    for directory in [LOG_DIR, CACHE_DIR]:
-        directory.mkdir(parents=True, exist_ok=True)
+def get_timeout_threshold(factor: float = 1.0) -> float:
+    """Calculates effective timeout based on a multiplier.
 
-# Ensure environment readiness on import
-ensure_directories()
+    Args:
+        factor: A float to scale the default timeout value.
+
+    Returns:
+        The calculated timeout duration as a float.
+    """
+    return float(DEFAULT_TIMEOUT * factor)
+
+# Placeholder for system path defaults
+CACHE_DIR: Final[str] = "~/.cache/cli-helper-26"
