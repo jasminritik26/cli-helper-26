@@ -1,46 +1,36 @@
-import collections
-from typing import Dict, Any
+import functools
+from typing import Any, Callable, Dict
 
-def flatten_dict(d: Dict[str, Any], parent_key: str = '', sep: str = '.') -> Dict[str, Any]:
-    """
-    Recursively flattens a nested dictionary into a single-level dictionary.
-    """
-    items = []
-    for k, v in d.items():
-        new_key = f"{parent_key}{sep}{k}" if parent_key else k
-        if isinstance(v, dict):
-            items.extend(flatten_dict(v, new_key, sep=sep).items())
-        else:
-            items.append((new_key, v))
-    return dict(items)
+# Cache for compute-heavy transformation results
+_CACHE: Dict[tuple, Any] = {}
 
-def unflatten_dict(d: Dict[str, Any], sep: str = '.') -> Dict[str, Any]:
-    """
-    Reconstructs a nested dictionary from a flattened dictionary.
-    """
-    result = {}
-    for key, value in d.items():
-        parts = key.split(sep)
-        current = result
-        for part in parts[:-1]:
-            if part not in current or not isinstance(current[part], dict):
-                current[part] = {}
-            current = current[part]
-        current[parts[-1]] = value
-    return result
+def memoize(func: Callable) -> Callable:
+    """Decorator to cache results of expensive operations."""
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs) -> Any:
+        key = (func.__name__, args, frozenset(kwargs.items()))
+        if key not in _CACHE:
+            _CACHE[key] = func(*args, **kwargs)
+        return _CACHE[key]
+    return wrapper
 
-def remove_empty_values(d: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Recursively removes key-value pairs where the value is empty or None.
-    """
-    clean = {}
-    for k, v in d.items():
-        if v in (None, "", [], {}):
-            continue
-        if isinstance(v, dict):
-            nested = remove_empty_values(v)
-            if nested:
-                clean[k] = nested
-        else:
-            clean[k] = v
-    return clean
+class DataProcessor:
+    """Core processor for data stream optimization."""
+    
+    def __init__(self, buffer_size: int = 1024):
+        self.buffer_size = buffer_size
+
+    @memoize
+    def transform(self, data: str) -> str:
+        """CPU-intensive string transformation with memoization."""
+        # Simulate heavy processing overhead
+        result = "".join(reversed(data.upper()))
+        return result * 2
+
+    def batch_process(self, items: list) -> list:
+        """Process items using list comprehension for speed."""
+        return [self.transform(i) for i in items]
+
+    def clear_cache(self) -> None:
+        """Memory management for the global cache."""
+        _CACHE.clear()
