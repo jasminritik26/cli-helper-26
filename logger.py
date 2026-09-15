@@ -1,34 +1,40 @@
 import logging
-from logging.handlers import RotatingFileHandler
+import sys
+from pathlib import Path
 
-def setup_logger(name: str = "cli_helper", log_file: str = "cli_helper.log", level: int = logging.INFO) -> logging.Logger:
-    """Sets up a logger with console and rotating file handlers."""
+def setup_logger(name: str, log_file: str = "app.log", level: int = logging.INFO) -> logging.Logger:
+    """Configures a standardized logger for the application."""
     logger = logging.getLogger(name)
     logger.setLevel(level)
 
-    if logger.hasHandlers():
-        return logger
-
-    file_formatter = logging.Formatter(
+    # Formatter for console and file output
+    formatter = logging.Formatter(
         "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
     )
-    console_formatter = logging.Formatter(
-        "%(levelname)s: %(message)s"
-    )
 
-    try:
-        file_handler = RotatingFileHandler(
-            log_file, maxBytes=5000000, backupCount=3, encoding="utf-8"
-        )
-        file_handler.setLevel(level)
-        file_handler.setFormatter(file_formatter)
-        logger.addHandler(file_handler)
-    except OSError:
-        pass
-
-    console_handler = logging.StreamHandler()
-    console_handler.setLevel(level)
-    console_handler.setFormatter(console_formatter)
+    # Console handler
+    console_handler = logging.StreamHandler(sys.stdout)
+    console_handler.setFormatter(formatter)
     logger.addHandler(console_handler)
 
+    # File handler
+    log_path = Path(log_file)
+    file_handler = logging.FileHandler(log_path)
+    file_handler.setFormatter(formatter)
+    logger.addHandler(file_handler)
+
     return logger
+
+def log_execution_time(func):
+    """Decorator to log the execution time of functions."""
+    import time
+    import functools
+
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        start_time = time.perf_counter()
+        result = func(*args, **kwargs)
+        end_time = time.perf_counter()
+        logging.info(f"Function {func.__name__} took {end_time - start_time:.4f} seconds")
+        return result
+    return wrapper
