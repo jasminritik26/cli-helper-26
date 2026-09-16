@@ -1,48 +1,31 @@
-"""Custom exception classes for the cli-helper-26 package."""
-
+import sys
 from typing import Optional
-
 
 class CLIHelperError(Exception):
     """Base exception class for all cli-helper errors."""
-
-    def __init__(self, message: str) -> None:
-        """Initialize the base exception with a message.
-
-        Args:
-            message: A descriptive error message.
-        """
+    def __init__(self, message: str, exit_code: int = 1) -> None:
         super().__init__(message)
-        self.message: str = message
+        self.message = message
+        self.exit_code = exit_code
 
-
-class CommandExecutionError(CLIHelperError):
-    """Raised when a CLI command fails to execute."""
-
-    def __init__(self, message: str, return_code: Optional[int] = None) -> None:
-        """Initialize the execution exception with a message and optional return code.
-
-        Args:
-            message: A descriptive error message.
-            return_code: The exit status code of the failed command.
-        """
-        super().__init__(message)
-        self.return_code: Optional[int] = return_code
-
-
-class ValidationError(CLIHelperError):
-    """Raised when input validation or parameter verification fails."""
-
-    def __init__(self, message: str, parameter: Optional[str] = None) -> None:
-        """Initialize the validation exception.
-
-        Args:
-            message: A descriptive error message.
-            parameter: The name of the invalid parameter.
-        """
-        super().__init__(message)
-        self.parameter: Optional[str] = parameter
-
+    def print_and_exit(self) -> None:
+        """Prints the formatted error message to stderr and exits."""
+        sys.stderr.write(f"[Error] {self.message}\n")
+        sys.exit(self.exit_code)
 
 class ConfigurationError(CLIHelperError):
-    """Raised when configuration values are missing or invalid."""
+    """Raised when CLI configuration is missing or invalid."""
+    def __init__(self, message: str) -> None:
+        super().__init__(message, exit_code=2)
+
+class ValidationError(CLIHelperError):
+    """Raised when input parameters or arguments fail validation."""
+    def __init__(self, message: str) -> None:
+        super().__init__(message, exit_code=3)
+
+class CommandExecutionError(CLIHelperError):
+    """Raised when an external or internal CLI command fails to execute."""
+    def __init__(self, message: str, original_error: Optional[Exception] = None) -> None:
+        details = f" (Reason: {str(original_error)})" if original_error else ""
+        super().__init__(f"{message}{details}", exit_code=4)
+        self.original_error = original_error
