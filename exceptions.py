@@ -1,36 +1,48 @@
-class CLIError(Exception):
-    """Base exception for cli-helper-26."""
-    pass
+"""Custom exception classes for the cli-helper-26 package."""
 
-class ValidationError(CLIError):
-    """Raised when input validation fails."""
-    pass
+from typing import Optional
 
-class ConfigError(CLIError):
-    """Raised when configuration loading fails."""
-    pass
 
-class ProcessingError(CLIError):
-    """Raised when data transformation fails."""
-    pass
+class CLIHelperError(Exception):
+    """Base exception class for all cli-helper errors."""
 
-_EXCEPTION_MAP = {
-    'validation': ValidationError,
-    'config': ConfigError,
-    'processing': ProcessingError
-}
+    def __init__(self, message: str) -> None:
+        """Initialize the base exception with a message.
 
-def raise_helper_error(error_type: str, message: str):
-    """
-    Efficient exception instantiation using a cached lookup table.
-    Avoids multiple conditional checks during runtime.
-    """
-    exception_class = _EXCEPTION_MAP.get(error_type, CLIError)
-    raise exception_class(message)
+        Args:
+            message: A descriptive error message.
+        """
+        super().__init__(message)
+        self.message: str = message
 
-if __name__ == "__main__":
-    # Example of optimized exception triggering
-    try:
-        raise_helper_error('validation', 'Invalid input detected')
-    except ValidationError as e:
-        print(f"Caught expected error: {e}")
+
+class CommandExecutionError(CLIHelperError):
+    """Raised when a CLI command fails to execute."""
+
+    def __init__(self, message: str, return_code: Optional[int] = None) -> None:
+        """Initialize the execution exception with a message and optional return code.
+
+        Args:
+            message: A descriptive error message.
+            return_code: The exit status code of the failed command.
+        """
+        super().__init__(message)
+        self.return_code: Optional[int] = return_code
+
+
+class ValidationError(CLIHelperError):
+    """Raised when input validation or parameter verification fails."""
+
+    def __init__(self, message: str, parameter: Optional[str] = None) -> None:
+        """Initialize the validation exception.
+
+        Args:
+            message: A descriptive error message.
+            parameter: The name of the invalid parameter.
+        """
+        super().__init__(message)
+        self.parameter: Optional[str] = parameter
+
+
+class ConfigurationError(CLIHelperError):
+    """Raised when configuration values are missing or invalid."""
