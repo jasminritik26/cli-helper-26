@@ -1,55 +1,65 @@
 # cli-helper-26
 
-`cli-helper-26` is a lightweight Python toolkit designed to streamline command-line interface development by automating repetitive boilerplate tasks. It provides a robust abstraction layer for handling subcommands, configuration parsing, and terminal formatting with minimal code.
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+`cli-helper-26` is a lightweight Python library designed to streamline the creation of interactive command-line interfaces. It provides intuitive abstractions for colored console output, formatted data tables, and asynchronous progress indicators with zero external dependencies.
 
 ## Features
 
-*   **Subcommand Auto-Routing:** Automatically maps command-line arguments to function signatures, removing the need for complex `argparse` nesting.
-*   **Built-in Config Manager:** Seamlessly integrates with YAML and JSON files to load local tool settings or user preferences.
-*   **Styled Output API:** Includes helper methods for consistent logging, progress bars, and color-coded status messages compatible with all standard terminals.
-*   **Zero-Dependency Core:** Built using only Python standard libraries to ensure portability and high performance across environments.
+* **Interactive Prompts**: Styled confirmation dialogs, multi-select menus, and masked password inputs out of the box.
+* **Lightweight Formatting**: Render clean ASCII tables, key-value trees, and ANSI-colored text without heavy frameworks.
+* **Non-blocking Spinners**: Thread-safe loading indicators and progress bars that integrate seamlessly with `asyncio` workflows.
+* **Configuration Parser**: Automatic discovery and validation of JSON/YAML configuration files into typed CLI contexts.
 
 ## Installation
 
-Install the package directly from PyPI using `pip`:
+Install the package via `pip`:
 
 ```bash
 pip install cli-helper-26
 ```
 
-Alternatively, for development installation, clone the repository:
+Or install directly from the source repository:
 
 ```bash
 git clone https://github.com/Developer/cli-helper-26.git
 cd cli-helper-26
-pip install -e .
+pip install .
 ```
 
-## Basic Usage
+## Quick Start
 
-Initialize your CLI app by inheriting from the `BaseCLI` class to enable automatic command registration:
+Here is a basic example showing how to collect input and display a spinner:
 
 ```python
-from cli_helper import BaseCLI
+from cli_helper_26 import Console, Prompt, Spinner
+import time
 
-class MyTool(BaseCLI):
-    def run_greet(self, name: str = "World"):
-        """Greet a user."""
-        self.logger.info(f"Hello, {name}!")
+console = Console()
+console.header("Deployment Script")
 
-if __name__ == "__main__":
-    MyTool().run()
+# Interactive prompt
+environment = Prompt.choice("Select target environment", ["staging", "production"])
+
+# Progress indicator
+with Spinner("Deploying application..."):
+    time.sleep(1.5)
+
+console.success(f"Successfully deployed to {environment}!")
 ```
 
-Run your new CLI tool from the terminal:
+To render structured data:
 
-```bash
-python main.py greet --name "Developer"
-# Output: [INFO] Hello, Developer!
+```python
+from cli_helper_26 import Table
+
+table = Table(headers=["ID", "Service", "Status"])
+table.add_row([1, "Auth API", "Running"])
+table.add_row([2, "Database", "Healthy"])
+
+console.render(table)
 ```
 
 ## License
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+Distributed under the MIT License. See `LICENSE` for more information.
