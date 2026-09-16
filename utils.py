@@ -1,36 +1,30 @@
-import json
 import os
-from typing import Any, Optional
+from typing import List, Optional, Union
 
-def load_data(file_path: str) -> Optional[dict]:
-    """Loads and parses JSON data from a file system path."""
-    if not os.path.exists(file_path):
-        return None
+def format_path(path: str) -> str:
+    """Normalize and expand user paths for consistency."""
+    return os.path.abspath(os.path.expanduser(path))
+
+def chunk_list(data: List[Union[str, int]], size: int) -> List[List[Union[str, int]]]:
+    """Split a list into smaller chunks of a specified size."""
+    if size <= 0:
+        raise ValueError("Chunk size must be a positive integer.")
+    return [data[i:i + size] for i in range(0, len(data), size)]
+
+def get_env_variable(key: str, default: Optional[str] = None) -> Optional[str]:
+    """Retrieve environment variable with an optional fallback default."""
+    return os.environ.get(key, default)
+
+def sanitize_input(user_input: str) -> str:
+    """Clean whitespace and convert input to lowercase for comparison."""
+    return str(user_input).strip().lower()
+
+def list_files_in_dir(directory: str, extension: Optional[str] = None) -> List[str]:
+    """Return a list of files in a directory, optionally filtered by extension."""
     try:
-        with open(file_path, 'r', encoding='utf-8') as f:
-            return json.load(f)
-    except (json.JSONDecodeError, IOError):
-        return None
-
-def save_data(data: Any, file_path: str) -> bool:
-    """Serializes dictionary data to a JSON file safely."""
-    try:
-        with open(file_path, 'w', encoding='utf-8') as f:
-            json.dump(data, f, indent=4, sort_keys=True)
-        return True
-    except (TypeError, IOError):
-        return False
-
-def sanitize_input(data: str) -> str:
-    """Removes trailing whitespace and normalizes line endings."""
-    if not isinstance(data, str):
-        return ""
-    return data.strip().replace('\r\n', '\n')
-
-def format_byte_size(size_bytes: int) -> str:
-    """Converts byte integer to human readable string format."""
-    for unit in ['B', 'KB', 'MB', 'GB']:
-        if size_bytes < 1024:
-            return f"{size_bytes:.2f} {unit}"
-        size_bytes /= 1024
-    return f"{size_bytes:.2f} TB"
+        files = os.listdir(directory)
+        if extension:
+            return [f for f in files if f.endswith(extension)]
+        return files
+    except FileNotFoundError:
+        return []
