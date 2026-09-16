@@ -1,31 +1,34 @@
 import re
 from typing import Any, Optional
 
-def validate_email(email: str) -> bool:
-    """Validates email string format using regex."""
-    pattern = r'^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$'
-    return bool(re.match(pattern, email))
+class Validator:
+    """Utility class for common CLI input validations."""
+    
+    EMAIL_REGEX = r'^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$'
 
-def sanitize_input(data: Any) -> str:
-    """Converts input to stripped string or returns empty."""
-    if data is None:
-        return ""
-    return str(data).strip()
+    @staticmethod
+    def is_email(value: str) -> bool:
+        """Check if input string follows standard email pattern."""
+        return bool(re.match(Validator.EMAIL_REGEX, value))
 
-def is_non_empty(value: Any) -> bool:
-    """Checks if value exists and is not whitespace."""
-    if isinstance(value, str):
-        return bool(value.strip())
-    return value is not None
+    @staticmethod
+    def is_positive_int(value: Any) -> bool:
+        """Verify that value is a positive integer."""
+        try:
+            int_val = int(value)
+            return int_val > 0
+        except (ValueError, TypeError):
+            return False
 
-def ensure_list(data: Any) -> list:
-    """Normalizes input to a flat list format."""
-    if data is None:
-        return []
-    if isinstance(data, (list, tuple, set)):
-        return list(data)
-    return [data]
+    @staticmethod
+    def validate_range(value: int, min_val: int, max_val: int) -> bool:
+        """Ensure integer is within inclusive boundaries."""
+        return min_val <= value <= max_val
 
-def validate_range(value: int, min_val: int, max_val: int) -> bool:
-    """Checks if integer is within inclusive boundaries."""
-    return min_val <= value <= max_val
+def validate_cli_input(value: str, type_check: str = "string") -> bool:
+    """Dispatcher for common input validation tasks."""
+    if type_check == "email":
+        return Validator.is_email(value)
+    elif type_check == "positive_int":
+        return Validator.is_positive_int(value)
+    return len(value.strip()) > 0
