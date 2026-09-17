@@ -1,31 +1,34 @@
-import sys
-from typing import Optional
+class CLIError(Exception):
+    """Base exception for all cli-helper-26 errors."""
+    pass
 
-class CLIHelperError(Exception):
-    """Base exception class for all cli-helper errors."""
-    def __init__(self, message: str, exit_code: int = 1) -> None:
-        super().__init__(message)
-        self.message = message
-        self.exit_code = exit_code
+class ConfigurationError(CLIError):
+    """Raised when configuration loading fails."""
+    pass
 
-    def print_and_exit(self) -> None:
-        """Prints the formatted error message to stderr and exits."""
-        sys.stderr.write(f"[Error] {self.message}\n")
-        sys.exit(self.exit_code)
+class ValidationError(CLIError):
+    """Raised when input validation fails."""
+    pass
 
-class ConfigurationError(CLIHelperError):
-    """Raised when CLI configuration is missing or invalid."""
-    def __init__(self, message: str) -> None:
-        super().__init__(message, exit_code=2)
+class ExecutionError(CLIError):
+    """Raised when a command or process fails."""
+    pass
 
-class ValidationError(CLIHelperError):
-    """Raised when input parameters or arguments fail validation."""
-    def __init__(self, message: str) -> None:
-        super().__init__(message, exit_code=3)
+def handle_exception(exc: Exception) -> str:
+    """Returns a formatted error message for display."""
+    if isinstance(exc, CLIError):
+        return f"[CLI Error] {str(exc)}"
+    return f"[Unexpected Error] {type(exc).__name__}: {str(exc)}"
 
-class CommandExecutionError(CLIHelperError):
-    """Raised when an external or internal CLI command fails to execute."""
-    def __init__(self, message: str, original_error: Optional[Exception] = None) -> None:
-        details = f" (Reason: {str(original_error)})" if original_error else ""
-        super().__init__(f"{message}{details}", exit_code=4)
-        self.original_error = original_error
+def raise_if_none(value, name: str):
+    """Helper to ensure required values exist."""
+    if value is None:
+        raise ValidationError(f"Missing required parameter: {name}")
+    return value
+
+def validate_path(path: str):
+    """Verifies if a path exists for operations."""
+    import os
+    if not os.path.exists(path):
+        raise ValidationError(f"Path not found: {path}")
+    return True
