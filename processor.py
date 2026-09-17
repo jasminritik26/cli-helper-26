@@ -1,37 +1,33 @@
-import json
-import os
-import shutil
-from typing import Any, Dict, Optional
+import functools
+from typing import Any, Callable, Dict
 
-def load_json(filepath: str) -> Dict[str, Any]:
-    """Loads data from a json file."""
-    if not os.path.exists(filepath):
-        return {}
-    with open(filepath, 'r') as f:
-        return json.load(f)
+# Cache for repetitive computational tasks in cli-helper-26
+_memoization_cache: Dict[tuple, Any] = {}
 
-def save_json(data: Dict[str, Any], filepath: str) -> None:
-    """Writes dictionary data to a json file."""
-    with open(filepath, 'w') as f:
-        json.dump(data, f, indent=4)
+def memoize(func: Callable) -> Callable:
+    """Decorator to cache function results based on arguments."""
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs) -> Any:
+        key = (func.__name__, args, frozenset(kwargs.items()))
+        if key not in _memoization_cache:
+            _memoization_cache[key] = func(*args, **kwargs)
+        return _memoization_cache[key]
+    return wrapper
 
-def safe_copy(src: str, dst: str) -> bool:
-    """Copies file with exception handling."""
-    try:
-        shutil.copy2(src, dst)
-        return True
-    except (IOError, OSError):
-        return False
+class DataProcessor:
+    def __init__(self, buffer_size: int = 1024):
+        self.buffer_size = buffer_size
 
-def ensure_dir(directory: str) -> None:
-    """Creates directory if it does not exist."""
-    if not os.path.exists(directory):
-        os.makedirs(directory)
+    @memoize
+    def transform(self, data: str) -> str:
+        """Heavy string transformation with memoization."""
+        # Simulating CPU intensive parsing
+        return "".join(sorted(data.lower())).strip()
 
-def format_bytes(size: int) -> str:
-    """Converts byte size to human readable string."""
-    for unit in ['B', 'KB', 'MB', 'GB']:
-        if size < 1024:
-            return f"{size:.2f} {unit}"
-        size /= 1024
-    return f"{size:.2f} TB"
+    def batch_process(self, inputs: list) -> list:
+        """Efficient mapping for bulk data handling."""
+        return [self.transform(item) for item in inputs if item]
+
+    def clear_cache(self) -> None:
+        """Manual cache invalidation for memory management."""
+        _memoization_cache.clear()
