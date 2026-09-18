@@ -1,43 +1,41 @@
-import functools
 import logging
-import time
-from typing import Any, Callable, Tuple, Type
+from typing import Any, Optional
 
-logger = logging.getLogger("cli_helper.utils")
+logger = logging.getLogger(__name__)
 
+def safe_execute(func: callable, *args: Any, default: Any = None, **kwargs: Any) -> Any:
+    """
+    executes a function safely with error handling for edge cases
+    returns the default value if an exception occurs during execution
+    """
+    try:
+        if not callable(func):
+            raise ValueError(f"expected callable, got {type(func).__name__}")
+        return func(*args, **kwargs)
+    except (TypeError, ValueError, AttributeError, KeyError) as e:
+        logger.error(f"logic error in {func.__name__}: {str(e)}")
+        return default
+    except Exception as e:
+        logger.critical(f"unexpected system error: {str(e)}")
+        return default
 
-def retry_network_op(
-    max_retries: int = 3,
-    backoff_factor: float = 1.0,
-    retryable_exceptions: Tuple[Type[BaseException], ...] = (Exception,),
-) -> Callable:
-    """Decorator to retry network operations with exponential backoff."""
+def validate_input(data: Optional[Any], expected_type: type) -> bool:
+    """
+    verifies input against expected type with null safety
+    returns false if input is missing or type mismatch
+    """
+    if data is None:
+        return False
+    try:
+        return isinstance(data, expected_type)
+    except Exception:
+        return False
 
-    def decorator(func: Callable[..., Any]) -> Callable[..., Any]:
-        @functools.wraps(func)
-        def wrapper(*args: Any, **kwargs: Any) -> Any:
-            delay = backoff_factor
-            for attempt in range(1, max_retries + 1):
-                try:
-                    return func(*args, **kwargs)
-                except retryable_exceptions as err:
-                    if attempt == max_retries:
-                        logger.error(
-                            "Execution failed after %d attempts: %s",
-                            max_retries,
-                            str(err),
-                        )
-                        raise
-                    logger.warning(
-                        "Attempt %d/%d failed (%s). Retrying in %.1fs...",
-                        attempt,
-                        max_retries,
-                        err,
-                        delay,
-                    )
-                    time.sleep(delay)
-                    delay *= 2.0
-
-        return wrapper
-
-    return decorator
+def format_response(payload: Any) -> str:
+    """
+    safely converts input to string for cli output
+    """
+    try:
+        return str(payload) if payload is not None else ""
+    except Exception:
+        return "[serialization error]"
