@@ -1,40 +1,39 @@
 import logging
 import sys
-from pathlib import Path
+from typing import Optional
 
-def setup_logger(name: str, log_file: str = "app.log", level: int = logging.INFO) -> logging.Logger:
-    """Configures a standardized logger for the application."""
+# Configure standard formatting for cli-helper-26
+FORMAT = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+
+def get_logger(name: str, level: int = logging.INFO) -> logging.Logger:
+    """
+    Initializes a standardized logger instance for the CLI application.
+    """
     logger = logging.getLogger(name)
     logger.setLevel(level)
 
-    # Formatter for console and file output
-    formatter = logging.Formatter(
-        "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-    )
-
-    # Console handler
-    console_handler = logging.StreamHandler(sys.stdout)
-    console_handler.setFormatter(formatter)
-    logger.addHandler(console_handler)
-
-    # File handler
-    log_path = Path(log_file)
-    file_handler = logging.FileHandler(log_path)
-    file_handler.setFormatter(formatter)
-    logger.addHandler(file_handler)
+    # Prevent duplicate handlers if get_logger is called multiple times
+    if not logger.handlers:
+        handler = logging.StreamHandler(sys.stdout)
+        formatter = logging.Formatter(FORMAT)
+        handler.setFormatter(formatter)
+        logger.addHandler(handler)
 
     return logger
 
-def log_execution_time(func):
-    """Decorator to log the execution time of functions."""
-    import time
-    import functools
+def log_data_summary(data: list, logger: logging.Logger) -> None:
+    """
+    Logs a summary of processed data items.
+    """
+    if not data:
+        logger.warning("No data provided for summary.")
+        return
 
-    @functools.wraps(func)
-    def wrapper(*args, **kwargs):
-        start_time = time.perf_counter()
-        result = func(*args, **kwargs)
-        end_time = time.perf_counter()
-        logging.info(f"Function {func.__name__} took {end_time - start_time:.4f} seconds")
-        return result
-    return wrapper
+    logger.info(f"Processed {len(data)} items successfully.")
+
+def setup_debug_mode(enabled: bool) -> None:
+    """
+    Global toggle for application debug logging.
+    """
+    level = logging.DEBUG if enabled else logging.INFO
+    logging.basicConfig(level=level, format=FORMAT)
