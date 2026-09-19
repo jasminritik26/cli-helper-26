@@ -1,33 +1,38 @@
-import functools
-from typing import Any, Callable, Dict
+import sys
 
-# Cache for repetitive computational tasks in cli-helper-26
-_memoization_cache: Dict[tuple, Any] = {}
+def validate_input(user_input):
+    """Ensures input is non-empty and within expected length."""
+    if not user_input or not user_input.strip():
+        return False, "Input cannot be empty."
+    if len(user_input) > 255:
+        return False, "Input exceeds maximum length of 255 characters."
+    return True, None
 
-def memoize(func: Callable) -> Callable:
-    """Decorator to cache function results based on arguments."""
-    @functools.wraps(func)
-    def wrapper(*args, **kwargs) -> Any:
-        key = (func.__name__, args, frozenset(kwargs.items()))
-        if key not in _memoization_cache:
-            _memoization_cache[key] = func(*args, **kwargs)
-        return _memoization_cache[key]
-    return wrapper
+def run_main_loop():
+    """Main processing loop with integrated input validation."""
+    print("cli-helper-26 initialized. Type 'exit' to quit.")
+    
+    while True:
+        try:
+            user_input = input(">> ").strip()
+            
+            if user_input.lower() == 'exit':
+                break
+                
+            is_valid, error_msg = validate_input(user_input)
+            
+            if not is_valid:
+                print(f"Validation error: {error_msg}")
+                continue
+                
+            # Process valid input here
+            print(f"Processing: {user_input}")
+            
+        except EOFError:
+            break
+        except KeyboardInterrupt:
+            print("\nExiting...")
+            break
 
-class DataProcessor:
-    def __init__(self, buffer_size: int = 1024):
-        self.buffer_size = buffer_size
-
-    @memoize
-    def transform(self, data: str) -> str:
-        """Heavy string transformation with memoization."""
-        # Simulating CPU intensive parsing
-        return "".join(sorted(data.lower())).strip()
-
-    def batch_process(self, inputs: list) -> list:
-        """Efficient mapping for bulk data handling."""
-        return [self.transform(item) for item in inputs if item]
-
-    def clear_cache(self) -> None:
-        """Manual cache invalidation for memory management."""
-        _memoization_cache.clear()
+if __name__ == "__main__":
+    run_main_loop()
