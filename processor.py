@@ -1,62 +1,32 @@
-import sys
-from typing import Dict, Any, List
+import time
+import functools
+import logging
 
-class ValidationError(Exception):
-    """Custom exception for input validation failures in the CLI."""
-    pass
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
-class CommandProcessor:
-    """Processes and validates command-line input within a main loop."""
-    
-    def __init__(self, allowed_commands: List[str]):
-        self.allowed_commands = allowed_commands
+def retry_operation(retries=3, delay=2, backoff=2):
+    """Decorator for retrying network operations with exponential backoff."""
+    def decorator(func):
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            current_delay = delay
+            for attempt in range(retries):
+                try:
+                    return func(*args, **kwargs)
+                except (ConnectionError, TimeoutError) as e:
+                    if attempt == retries - 1:
+                        logger.error(f"Final attempt failed: {e}")
+                        raise
+                    logger.warning(f"Attempt {attempt + 1} failed: {e}. Retrying...")
+                    time.sleep(current_delay)
+                    current_delay *= backoff
+            return None
+        return wrapper
+    return decorator
 
-    def validate_input(self, raw_input: str) -> Dict[str, Any]:
-        """Validates the format and content of the user input.
-        
-        Format should be: <command> [key=value key2=value2 ...]
-        """
-        cleaned = raw_input.strip()
-        if not cleaned:
-            raise ValidationError("Input cannot be empty")
-
-        parts = cleaned.split()
-        command = parts[0].lower()
-
-        if command not in self.allowed_commands:
-            raise ValidationError(f"Unknown command '{command}'. Allowed: {', '.join(self.allowed_commands)}")
-
-        args = {}
-        for param in parts[1:]:
-            if '=' not in param:
-                raise ValidationError(f"Invalid parameter format '{param}'. Expected key=value")
-            key, val = param.split('=', 1)
-            if not key.strip() or not val.strip():
-                raise ValidationError(f"Key and value must not be empty in '{param}'")
-            args[key.strip()] = val.strip()
-
-        return {"command": command, "args": args}
-
-    def run_loop(self) -> None:
-        """Main processing loop designed for input handling and validation."""
-        print("CLI Helper active. Type 'exit' to stop.")
-        while True:
-            try:
-                user_input = input("cli-helper> ")
-                if user_input.strip().lower() == "exit":
-                    print("Exiting command processor.")
-                    break
-
-                parsed = self.validate_input(user_input)
-                print(f"Processing success: {parsed['command']} with parameters {parsed['args']}")
-
-            except ValidationError as ve:
-                print(f"Validation Error: {ve}", file=sys.stderr)
-            except (KeyboardInterrupt, EOFError):
-                print("\nSession terminated.")
-                break
-
-if __name__ == "__main__":
-    # Example instantiation for execution demonstration
-    processor = CommandProcessor(allowed_commands=["config", "status", "deploy"])
-    processor.run_loop()
+@retry_operation(retries=3, delay=1)
+def fetch_data(url):
+    """Simulates a network request prone to transient errors."""
+    logger.info(f"Fetching from {url}...")
+    raise ConnectionError("Server unreachable")
