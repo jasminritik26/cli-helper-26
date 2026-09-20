@@ -1,51 +1,36 @@
-import functools
-import re
-from typing import Dict, Generator, List, Optional
+import time
+import urllib.request
+import urllib.error
+from functools import wraps
 
+def retry(max_attempts=3, delay=1.0, backoff=2.0, exceptions=(Exception,)):
+    """
+    Decorator that retries a function call with exponential backoff.
+    """
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            current_delay = delay
+            for attempt in range(1, max_attempts + 1):
+                try:
+                    return func(*args, **kwargs)
+                except exceptions as e:
+                    if attempt == max_attempts:
+                        raise e
+                    print(f"[Warning] Attempt {attempt}/{max_attempts} failed: {e}. Retrying in {current_delay:.1f}s...")
+                    time.sleep(current_delay)
+                    current_delay *= backoff
+        return wrapper
+    return decorator
 
-class CoreCommandProcessor:
-    """Core processor for managing, filtering, and caching CLI commands."""
-
-    def __init__(self, commands: List[Dict[str, str]]) -> None:
-        # Store commands as an immutable tuple of tuples to support caching mechanisms
-        self._commands = tuple(
-            (cmd.get("name", ""), cmd.get("usage", ""), cmd.get("description", ""))
-            for cmd in commands
-        )
-        self._compiled_regexes: Dict[str, re.Pattern] = {}
-
-    def _get_compiled_regex(self, pattern: str) -> re.Pattern:
-        """Retrieve from local cache or compile and store a new regex pattern."""
-        if pattern not in self._compiled_regexes:
-            self._compiled_regexes[pattern] = re.compile(pattern, re.IGNORECASE)
-        return self._compiled_regexes[pattern]
-
-    @functools.lru_cache(maxsize=128)
-    def search_commands(self, query: str) -> List[Dict[str, str]]:
-        """Fast cached lookup of commands matching a search query."""
-        if not query:
-            return [
-                {"name": name, "usage": usage, "description": desc}
-                for name, usage, desc in self._commands
-            ]
-
-        compiled = self._get_compiled_regex(re.escape(query))
-        results = []
-
-        for name, usage, desc in self._commands:
-            if compiled.search(name) or compiled.search(desc):
-                results.append(
-                    {"name": name, "usage": usage, "description": desc}
-                )
-
-        return results
-
-    def batch_process_stream(
-        self, patterns: List[str]
-    ) -> Generator[Dict[str, str], None, None]:
-        """Memory-efficient generator for filtering commands by multiple patterns."""
-        compiled_patterns = [self._get_compiled_regex(p) for p in patterns]
-
-        for name, usage, desc in self._commands:
-            if any(pat.search(name) or pat.search(desc) for pat in compiled_patterns):
-                yield {"name": name, "usage": usage, "description": desc}
+@retry(max_attempts=4, delay=1.0, backoff=2.0, exceptions=(urllib.error.URLError, urllib.error.HTTPError))
+def fetch_url(url: str, timeout: int = 5) -> str:
+    """
+    Fetch the content of a URL with built-in retry logic.
+    """
+    req = urllib.request.Request(
+        url, 
+        headers={'User-Agent': 'cli-helper/2.6'}
+    )
+    with urllib.request.urlopen(req, timeout=timeout) as response:
+        return response.read().decode('utf-8')
