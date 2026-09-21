@@ -1,42 +1,38 @@
-import functools
-import time
-import logging
-from typing import Callable, Any
+import os
+import sys
+import json
+from typing import Any, Dict, Optional
 
-# Configure logger for core operations
-logger = logging.getLogger(__name__)
+def load_json_file(filepath: str) -> Dict[str, Any]:
+    """Load and parse a JSON configuration file."""
+    if not os.path.exists(filepath):
+        return {}
+    with open(filepath, 'r', encoding='utf-8') as f:
+        return json.load(f)
 
-# Cache for storing expensive function results
-_CACHE = {}
+def save_json_file(filepath: str, data: Dict[str, Any]) -> bool:
+    """Serialize data to a JSON file."""
+    try:
+        with open(filepath, 'w', encoding='utf-8') as f:
+            json.dump(data, f, indent=4)
+        return True
+    except (IOError, TypeError):
+        return False
 
-def memoize(func: Callable) -> Callable:
-    """Decorator to cache function results based on arguments."""
-    @functools.wraps(func)
-    def wrapper(*args: Any, **kwargs: Any) -> Any:
-        key = (func.__name__, args, frozenset(kwargs.items()))
-        if key not in _CACHE:
-            _CACHE[key] = func(*args, **kwargs)
-        return _CACHE[key]
-    return wrapper
+def ensure_directory(path: str) -> None:
+    """Create directory structure if missing."""
+    if not os.path.exists(path):
+        os.makedirs(path, exist_ok=True)
 
-def batch_process(items: list, chunk_size: int = 100) -> list:
-    """Generator to slice input lists for efficient iteration."""
-    for i in range(0, len(items), chunk_size):
-        yield items[i:i + chunk_size]
+def get_env_variable(key: str, default: Optional[str] = None) -> Optional[str]:
+    """Safe access to environment variables."""
+    return os.environ.get(key, default)
 
-class PerformanceEngine:
-    """Utility class to track execution time of core tasks."""
-    @staticmethod
-    def time_execution(func: Callable) -> Callable:
-        @functools.wraps(func)
-        def wrapper(*args, **kwargs):
-            start_time = time.perf_counter()
-            result = func(*args, **kwargs)
-            duration = time.perf_counter() - start_time
-            logger.debug(f"Execution of {func.__name__} took {duration:.4f}s")
-            return result
-        return wrapper
+def format_cli_output(message: str, level: str = 'INFO') -> str:
+    """Standardized formatting for console messages."""
+    return f"[{level.upper()}] {message}"
 
-def clear_cache() -> None:
-    """Manual memory management for internal cache."""
-    _CACHE.clear()
+if __name__ == '__main__':
+    # Basic validation of core functionality
+    ensure_directory('data')
+    print(format_cli_output('core modules initialized successfully'))
