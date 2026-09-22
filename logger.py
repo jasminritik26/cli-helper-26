@@ -1,39 +1,33 @@
 import logging
-import sys
-from typing import Optional
+from logging.handlers import RotatingFileHandler
+import os
 
-# Configure standard formatting for cli-helper-26
-FORMAT = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-
-def get_logger(name: str, level: int = logging.INFO) -> logging.Logger:
-    """
-    Initializes a standardized logger instance for the CLI application.
-    """
+def setup_logger(name: str = "cli-helper-26", log_file: str = "app.log") -> logging.Logger:
+    """Configures a rotating file logger for the application."""
     logger = logging.getLogger(name)
-    logger.setLevel(level)
+    logger.setLevel(logging.DEBUG)
 
-    # Prevent duplicate handlers if get_logger is called multiple times
-    if not logger.handlers:
-        handler = logging.StreamHandler(sys.stdout)
-        formatter = logging.Formatter(FORMAT)
-        handler.setFormatter(formatter)
-        logger.addHandler(handler)
+    # Prevent duplicate handlers if setup is called multiple times
+    if logger.hasHandlers():
+        return logger
+
+    # Formatter for log messages
+    formatter = logging.Formatter(
+        '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    )
+
+    # Rotating file handler: 5MB per file, keep 3 backups
+    handler = RotatingFileHandler(
+        log_file, 
+        maxBytes=5 * 1024 * 1024, 
+        backupCount=3
+    )
+    handler.setFormatter(formatter)
+    logger.addHandler(handler)
+
+    # Console handler for visibility
+    console = logging.StreamHandler()
+    console.setFormatter(formatter)
+    logger.addHandler(console)
 
     return logger
-
-def log_data_summary(data: list, logger: logging.Logger) -> None:
-    """
-    Logs a summary of processed data items.
-    """
-    if not data:
-        logger.warning("No data provided for summary.")
-        return
-
-    logger.info(f"Processed {len(data)} items successfully.")
-
-def setup_debug_mode(enabled: bool) -> None:
-    """
-    Global toggle for application debug logging.
-    """
-    level = logging.DEBUG if enabled else logging.INFO
-    logging.basicConfig(level=level, format=FORMAT)
