@@ -1,48 +1,43 @@
-import collections.abc
-from typing import Any, Dict, List
+import os
+import shutil
+from pathlib import Path
+from typing import Union
 
+def ensure_directory(path: Union[str, Path]) -> None:
+    """Create directory if it does not exist."""
+    target = Path(path)
+    if not target.exists():
+        target.mkdir(parents=True, exist_ok=True)
 
-def flatten_dict(
-    d: Dict[str, Any], parent_key: str = "", sep: str = "_"
-) -> Dict[str, Any]:
-    """Flattens a nested dictionary, joining nested keys with a separator."""
-    items: List[tuple] = []
-    for k, v in d.items():
-        new_key = f"{parent_key}{sep}{k}" if parent_key else k
-        if isinstance(v, collections.abc.MutableMapping):
-            items.extend(flatten_dict(v, new_key, sep=sep).items())
-        elif isinstance(v, list):
-            for i, item in enumerate(v):
-                list_key = f"{new_key}{sep}{i}"
-                if isinstance(item, collections.abc.MutableMapping):
-                    items.extend(flatten_dict(item, list_key, sep=sep).items())
-                else:
-                    items.append((list_key, item))
-        else:
-            items.append((new_key, v))
-    return dict(items)
+def cleanup_temp_files(directory: str, extension: str = '.tmp') -> int:
+    """Remove temporary files from a directory and return count."""
+    count = 0
+    dir_path = Path(directory)
+    if not dir_path.is_dir():
+        return count
 
+    for item in dir_path.glob(f'*{extension}'):
+        try:
+            item.unlink()
+            count += 1
+        except OSError:
+            continue
+    return count
 
-def safe_get(
-    data: Dict[str, Any], path: str, default: Any = None, sep: str = "."
-) -> Any:
-    """Safely retrieves a nested value using a dot-separated string path."""
-    if not path:
-        return default
+def format_byte_size(size: int) -> str:
+    """Convert bytes to human readable format."""
+    for unit in ['B', 'KB', 'MB', 'GB']:
+        if size < 1024:
+            return f"{size:.2f} {unit}"
+        size /= 1024
+    return f"{size:.2f} TB"
 
-    keys = path.split(sep)
-    current: Any = data
-
-    for key in keys:
-        if isinstance(current, dict) and key in current:
-            current = current[key]
-        elif isinstance(current, list):
-            try:
-                index = int(key)
-                current = current[index]
-            except (ValueError, IndexError):
-                return default
-        else:
-            return default
-
-    return current
+def get_file_metadata(path: Union[str, Path]) -> dict:
+    """Retrieve basic file attributes as a dictionary."""
+    file_path = Path(path)
+    stats = file_path.stat()
+    return {
+        "name": file_path.name,
+        "size": stats.st_size,
+        "modified": stats.st_mtime
+    }
