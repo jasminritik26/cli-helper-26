@@ -1,33 +1,51 @@
 import logging
-from logging.handlers import RotatingFileHandler
 import os
+from logging.handlers import RotatingFileHandler
+from pathlib import Path
 
-def setup_logger(name: str = "cli-helper-26", log_file: str = "app.log") -> logging.Logger:
-    """Configures a rotating file logger for the application."""
+
+def get_logger(
+    name: str = "cli_helper",
+    log_file: str = "logs/cli_helper.log",
+    level: int = logging.INFO,
+    max_bytes: int = 1048576,
+    backup_count: int = 5,
+) -> logging.Logger:
+    """Configures and returns a logger with both console and rotating file handlers."""
     logger = logging.getLogger(name)
-    logger.setLevel(logging.DEBUG)
+    logger.setLevel(level)
 
-    # Prevent duplicate handlers if setup is called multiple times
-    if logger.hasHandlers():
+    # Prevent duplicate handlers if logger is already configured
+    if logger.handlers:
         return logger
 
-    # Formatter for log messages
     formatter = logging.Formatter(
-        '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+        fmt="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
     )
 
-    # Rotating file handler: 5MB per file, keep 3 backups
-    handler = RotatingFileHandler(
-        log_file, 
-        maxBytes=5 * 1024 * 1024, 
-        backupCount=3
-    )
-    handler.setFormatter(formatter)
-    logger.addHandler(handler)
+    # Console Handler
+    console_handler = logging.StreamHandler()
+    console_handler.setFormatter(formatter)
+    logger.addHandler(console_handler)
 
-    # Console handler for visibility
-    console = logging.StreamHandler()
-    console.setFormatter(formatter)
-    logger.addHandler(console)
+    # Rotating File Handler
+    try:
+        log_path = Path(log_file)
+        log_path.parent.mkdir(parents=True, exist_ok=True)
+
+        file_handler = RotatingFileHandler(
+            filename=log_file,
+            maxBytes=max_bytes,
+            backupCount=backup_count,
+            encoding="utf-8",
+        )
+        file_handler.setFormatter(formatter)
+        logger.addHandler(file_handler)
+    except (OSError, PermissionError) as err:
+        # Fallback to console-only logging if file writing fails
+        logger.warning(
+            f"Failed to initialize file logger: {err}. Logging to console only."
+        )
 
     return logger
