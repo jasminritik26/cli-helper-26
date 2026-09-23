@@ -1,38 +1,45 @@
-import os
-import sys
-import json
-from typing import Any, Dict, Optional
+import difflib
+from functools import lru_cache
+from typing import List, Dict, Optional
 
-def load_json_file(filepath: str) -> Dict[str, Any]:
-    """Load and parse a JSON configuration file."""
-    if not os.path.exists(filepath):
-        return {}
-    with open(filepath, 'r', encoding='utf-8') as f:
-        return json.load(f)
+class CommandRegistry:
+    """Manages registered CLI commands with optimized resolution."""
 
-def save_json_file(filepath: str, data: Dict[str, Any]) -> bool:
-    """Serialize data to a JSON file."""
-    try:
-        with open(filepath, 'w', encoding='utf-8') as f:
-            json.dump(data, f, indent=4)
-        return True
-    except (IOError, TypeError):
-        return False
+    def __init__(self) -> None:
+        self._commands: Dict[str, str] = {}
+        self._sorted_commands: List[str] = []
 
-def ensure_directory(path: str) -> None:
-    """Create directory structure if missing."""
-    if not os.path.exists(path):
-        os.makedirs(path, exist_ok=True)
+    def register(self, name: str, description: str) -> None:
+        """Registers a command and invalidates the resolution cache."""
+        self._commands[name] = description
+        self._sorted_commands = sorted(self._commands.keys())
+        self.resolve_command.cache_clear()
 
-def get_env_variable(key: str, default: Optional[str] = None) -> Optional[str]:
-    """Safe access to environment variables."""
-    return os.environ.get(key, default)
+    @lru_cache(maxsize=256)
+    def resolve_command(self, query: str) -> Optional[str]:
+        """Resolves a query to the closest registered command using optimized lookups."""
+        if not query:
+            return None
 
-def format_cli_output(message: str, level: str = 'INFO') -> str:
-    """Standardized formatting for console messages."""
-    return f"[{level.upper()}] {message}"
+        # Fast path: exact match
+        if query in self._commands:
+            return query
 
-if __name__ == '__main__':
-    # Basic validation of core functionality
-    ensure_directory('data')
-    print(format_cli_output('core modules initialized successfully'))
+        # Optimized prefix match
+        prefix_matches = [cmd for cmd in self._sorted_commands if cmd.startswith(query)]
+        if prefix_matches:
+            return prefix_matches[0]
+
+        # Fallback to fuzzy match with reasonable threshold
+        matches = difflib.get_close_matches(query, self._sorted_commands, n=1, cutoff=0.5)
+        return matches[0] if matches else None
+
+    def get_description(self, command: str) -> str:
+        """Retrieves description for a resolved command."""
+        return self._commands.get(command, "No description available.")
+
+    def bulk_register(self, commands: Dict[str, str]) -> None:
+        """Registers multiple commands while minimizing cache invalidation overhead."""
+        self._commands.update(commands)
+        self._sorted_commands = sorted(self._commands.keys())
+        self.resolve_command.cache_clear()
