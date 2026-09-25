@@ -1,25 +1,38 @@
-from typing import List, Optional, Any
 import os
+import json
+import sys
+from typing import Any, Optional
 
-def format_output(data: List[str], prefix: str = '>>') -> str:
-    """Formats a list of strings into a standard console output string."""
-    return "\n".join([f"{prefix} {item}" for item in data])
+def load_json(filepath: str) -> Optional[dict]:
+    """Reads and parses a JSON file from disk."""
+    if not os.path.exists(filepath):
+        return None
+    try:
+        with open(filepath, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except (json.JSONDecodeError, IOError):
+        return None
 
-def get_env_variable(key: str, default: Optional[str] = None) -> str:
-    """Retrieves environment variable with a fallback default value."""
-    return os.environ.get(key, default or "")
+def save_json(filepath: str, data: dict) -> bool:
+    """Serializes data to a JSON file."""
+    try:
+        with open(filepath, 'w', encoding='utf-8') as f:
+            json.dump(data, f, indent=4)
+        return True
+    except IOError:
+        return False
 
-def clean_input(raw_input: Any) -> str:
-    """Converts input to a stripped string safe for CLI processing."""
-    if not isinstance(raw_input, str):
-        raw_input = str(raw_input)
-    return raw_input.strip()
+def ensure_dir(directory: str) -> None:
+    """Creates a directory if it does not exist."""
+    if not os.path.exists(directory):
+        os.makedirs(directory)
 
-def validate_path(path: str) -> bool:
-    """Checks if the provided path string exists on the filesystem."""
-    return os.path.exists(path)
+def get_input(prompt: str, default: Any = None) -> str:
+    """Handles standard input with optional default values."""
+    user_input = input(f"{prompt} [{default}]: ").strip()
+    return user_input if user_input else str(default)
 
-def summarize_payload(payload: dict) -> str:
-    """Creates a compact summary string for dictionary based payloads."""
-    keys = ", ".join(payload.keys())
-    return f"Payload containing: {keys}"
+def exit_with_msg(message: str, code: int = 1) -> None:
+    """Graceful script termination with status message."""
+    print(message)
+    sys.exit(code)
