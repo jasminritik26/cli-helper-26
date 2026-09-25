@@ -1,32 +1,49 @@
-import json
 import os
+import json
+import sys
 from typing import Any, Dict
 
-DEFAULT_CONFIG = {
-    "version": "1.0.0",
-    "debug": False,
-    "log_level": "INFO",
-    "max_retries": 3
+DEFAULT_CONFIG: Dict[str, Any] = {
+    "verbose": False,
+    "max_retries": 3,
+    "timeout": 30.0,
+    "api_url": "https://api.cli-helper.local",
+    "output_format": "json"
 }
 
-def load_config(file_path: str = "config.json") -> Dict[str, Any]:
-    """Loads configuration from a JSON file with defaults."""
-    config = DEFAULT_CONFIG.copy()
+class ConfigLoader:
+    """Loads configuration from a JSON file, falling back to defaults and environment variables."""
 
-    if os.path.exists(file_path):
-        try:
-            with open(file_path, "r") as f:
-                user_config = json.load(f)
-                config.update(user_config)
-        except (json.JSONDecodeError, IOError) as e:
-            print(f"Warning: Could not load config {file_path}: {e}")
+    def __init__(self, config_path: str | None = None):
+        self.config_path = config_path
+        self.config = DEFAULT_CONFIG.copy()
+        self.load()
 
-    return config
+    def load(self) -> None:
+        """Loads configuration from file and applies environment overrides."""
+        if self.config_path and os.path.exists(self.config_path):
+            try:
+                with open(self.config_path, "r", encoding="utf-8") as f:
+                    file_config = json.load(f)
+                    if isinstance(file_config, dict):
+                        self.config.update(file_config)
+            except (json.JSONDecodeError, OSError) as err:
+                print(f"Warning: Failed to load config file ({err}). Using defaults.", file=sys.stderr)
 
-def save_config(config: Dict[str, Any], file_path: str = "config.json") -> None:
-    """Persists configuration dictionary to a JSON file."""
-    try:
-        with open(file_path, "w") as f:
-            json.dump(config, f, indent=4)
-    except IOError as e:
-        print(f"Error: Could not save config to {file_path}: {e}")
+        # Override with environment variables if present (prefixed with CLI_HELPER_)
+        for key in self.config:
+            env_key = f"CLI_HELPER_{key.upper()}"
+            if env_key in os.environ:
+                val = os.environ[env_key]
+                default_type = type(self.config[key])
+                try:
+                    if default_type is bool:
+                        self.config[key] = val.lower() in ("true", "1", "yes", "on")
+                    else:
+                        self.config[key] = default_type(val)
+                except ValueError:
+                    pass
+
+    def get(self, key: str) -> Any:
+        """Retrieves a config value by its key."""
+        return self.config.get(key)
