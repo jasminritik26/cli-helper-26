@@ -1,52 +1,36 @@
-"""Terminal formatting and CLI input helper functions."""
+import functools
+import time
+from typing import Callable, Any, Dict
 
-import shutil
-import sys
-from typing import List, Optional, Tuple
+# Cache for repetitive computational tasks
+_cache: Dict[tuple, Any] = {}
 
+def memoize(func: Callable) -> Callable:
+    """Decorator to cache function results based on arguments."""
+    @functools.wraps(func)
+    def wrapper(*args: Any, **kwargs: Any) -> Any:
+        key = (func.__name__, args, frozenset(kwargs.items()))
+        if key not in _cache:
+            _cache[key] = func(*args, **kwargs)
+        return _cache[key]
+    return wrapper
 
-def get_terminal_size(default: Tuple[int, int] = (80, 24)) -> Tuple[int, int]:
-    """Return terminal width and height safely."""
-    try:
-        columns, lines = shutil.get_terminal_size(fallback=default)
-        return columns, lines
-    except (AttributeError, ValueError):
-        return default
+def batch_process(data: list, chunk_size: int = 100) -> list:
+    """Memory-efficient processing of large datasets."""
+    for i in range(0, len(data), chunk_size):
+        yield data[i:i + chunk_size]
 
+def timed_execution(func: Callable) -> Callable:
+    """Performance tracking for core functions."""
+    @functools.wraps(func)
+    def wrapper(*args: Any, **kwargs: Any) -> Any:
+        start_time = time.perf_counter()
+        result = func(*args, **kwargs)
+        duration = time.perf_counter() - start_time
+        print(f"DEBUG: {func.__name__} executed in {duration:.4f}s")
+        return result
+    return wrapper
 
-def format_header(text: str, char: str = "=", width: Optional[int] = None) -> str:
-    """Format a text title centered inside decorative border lines."""
-    if width is None:
-        width, _ = get_terminal_size()
-    border = char * max(width, len(text))
-    return f"{border}\n{text.center(width)}\n{border}"
-
-
-def truncate_text(text: str, max_length: int = 50, suffix: str = "...") -> str:
-    """Truncate text to max_length if it exceeds the limit."""
-    if len(text) <= max_length:
-        return text
-    return text[: max_length - len(suffix)] + suffix
-
-
-def parse_kv_args(args: List[str]) -> dict:
-    """Parse key=value string pairs from command line arguments."""
-    result = {}
-    for arg in args:
-        if "=" in arg:
-            key, value = arg.split("=", 1)
-            result[key.strip()] = value.strip()
-    return result
-
-
-def confirm_action(prompt: str, default: bool = False) -> bool:
-    """Prompt the user for a yes/no confirmation in CLI."""
-    suffix = " [Y/n]: " if default else " [y/N]: "
-    try:
-        response = input(f"{prompt}{suffix}").strip().lower()
-        if not response:
-            return default
-        return response in ("y", "yes")
-    except (KeyboardInterrupt, EOFError):
-        sys.stdout.write("\n")
-        return False
+def clear_cache() -> None:
+    """Memory management for memoization cache."""
+    _cache.clear()
