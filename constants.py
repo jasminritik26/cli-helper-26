@@ -1,33 +1,34 @@
 import os
-import pathlib
-from typing import Final
+from pathlib import Path
 
-# Application configuration defaults
-APP_NAME: Final[str] = "cli-helper-26"
-VERSION: Final[str] = "1.0.0"
+# Application path definitions
+BASE_DIR = Path(__file__).resolve().parent
+DEFAULT_LOG_DIR = BASE_DIR / "logs"
+DEFAULT_CONFIG_PATH = BASE_DIR / "config.yaml"
 
-# Path constants
-BASE_DIR: Final[pathlib.Path] = pathlib.Path(__file__).resolve().parent
-DATA_DIR: Final[pathlib.Path] = BASE_DIR / "data"
-LOG_DIR: Final[pathlib.Path] = BASE_DIR / "logs"
+# Timeouts and performance defaults
+DEFAULT_TIMEOUT = 30
+MAX_RETRIES = 3
+RETRY_DELAY = 2
 
-# Operational limits
-MAX_RETRIES: Final[int] = 3
-TIMEOUT_SECONDS: Final[int] = 30
-DEFAULT_ENCODING: Final[str] = "utf-8"
+# Supported file extensions
+SUPPORTED_EXTENSIONS = {'.json', '.yaml', '.yml', '.toml'}
 
-# Logging configuration
-LOG_FORMAT: Final[str] = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-LOG_LEVEL: Final[str] = os.getenv("LOG_LEVEL", "INFO").upper()
+# Environment variable keys
+ENV_API_KEY = "CLI_HELPER_API_KEY"
+ENV_LOG_LEVEL = "CLI_HELPER_LOG_LEVEL"
 
-# Supported file extensions for processing
-SUPPORTED_EXTENSIONS: Final[list[str]] = [".txt", ".json", ".csv", ".yaml"]
+# Exit codes for cli operations
+EXIT_SUCCESS = 0
+EXIT_ERROR_GENERAL = 1
+EXIT_ERROR_CONFIG = 2
+EXIT_ERROR_NETWORK = 3
 
-# Environment validation
-def ensure_directories() -> None:
-    """Initializes required filesystem structure."""
-    for directory in [DATA_DIR, LOG_DIR]:
-        directory.mkdir(parents=True, exist_ok=True)
+# User-facing CLI constants
+APP_NAME = "cli-helper-26"
+VERSION = "0.1.0"
+BANNER = f"Initializing {APP_NAME} v{VERSION}..."
 
-# Execution on import
-ensure_directories()
+# Validation constraints
+MIN_INPUT_LENGTH = 3
+MAX_INPUT_LENGTH = 255
