@@ -1,45 +1,39 @@
-import difflib
-from functools import lru_cache
-from typing import List, Dict, Optional
+import sys
 
-class CommandRegistry:
-    """Manages registered CLI commands with optimized resolution."""
+def validate_input(user_input):
+    """Ensures input is non-empty and within expected length."""
+    if not user_input or not user_input.strip():
+        return False, "Input cannot be empty."
+    if len(user_input) > 255:
+        return False, "Input exceeds maximum length of 255 characters."
+    return True, None
 
-    def __init__(self) -> None:
-        self._commands: Dict[str, str] = {}
-        self._sorted_commands: List[str] = []
+def run_main_loop():
+    """Main processing loop with integrated input validation."""
+    print("cli-helper-26 initialized. Enter 'exit' to quit.")
+    
+    while True:
+        try:
+            user_input = input(">> ").strip()
+            
+            if user_input.lower() == 'exit':
+                print("Exiting application.")
+                break
+            
+            is_valid, error_msg = validate_input(user_input)
+            
+            if not is_valid:
+                print(f"Validation error: {error_msg}")
+                continue
+                
+            # Processing logic placeholder
+            print(f"Processing: {user_input}")
+            
+        except (EOFError, KeyboardInterrupt):
+            print("\nSession terminated by user.")
+            break
+        except Exception as e:
+            print(f"Unexpected system error: {e}")
 
-    def register(self, name: str, description: str) -> None:
-        """Registers a command and invalidates the resolution cache."""
-        self._commands[name] = description
-        self._sorted_commands = sorted(self._commands.keys())
-        self.resolve_command.cache_clear()
-
-    @lru_cache(maxsize=256)
-    def resolve_command(self, query: str) -> Optional[str]:
-        """Resolves a query to the closest registered command using optimized lookups."""
-        if not query:
-            return None
-
-        # Fast path: exact match
-        if query in self._commands:
-            return query
-
-        # Optimized prefix match
-        prefix_matches = [cmd for cmd in self._sorted_commands if cmd.startswith(query)]
-        if prefix_matches:
-            return prefix_matches[0]
-
-        # Fallback to fuzzy match with reasonable threshold
-        matches = difflib.get_close_matches(query, self._sorted_commands, n=1, cutoff=0.5)
-        return matches[0] if matches else None
-
-    def get_description(self, command: str) -> str:
-        """Retrieves description for a resolved command."""
-        return self._commands.get(command, "No description available.")
-
-    def bulk_register(self, commands: Dict[str, str]) -> None:
-        """Registers multiple commands while minimizing cache invalidation overhead."""
-        self._commands.update(commands)
-        self._sorted_commands = sorted(self._commands.keys())
-        self.resolve_command.cache_clear()
+if __name__ == "__main__":
+    run_main_loop()
