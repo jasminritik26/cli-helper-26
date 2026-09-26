@@ -1,35 +1,35 @@
 import logging
-from logging.handlers import RotatingFileHandler
-import os
+import sys
+from typing import Optional
 
-# Logger configuration settings
-LOG_FILE = "app.log"
-MAX_BYTES = 5 * 1024 * 1024  # 5 MB
-BACKUP_COUNT = 3
+class DataLogger:
+    """Utility for standardized application logging."""
+    
+    def __init__(self, name: str = "cli-helper-26", level: int = logging.INFO):
+        self.logger = logging.getLogger(name)
+        self.logger.setLevel(level)
+        
+        # prevent duplicate handlers in interactive sessions
+        if not self.logger.handlers:
+            handler = logging.StreamHandler(sys.stdout)
+            formatter = logging.Formatter(
+                '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+            )
+            handler.setFormatter(formatter)
+            self.logger.addHandler(handler)
 
-def get_logger(name: str) -> logging.Logger:
-    """Initializes and returns a rotated file logger."""
-    logger = logging.getLogger(name)
-    logger.setLevel(logging.INFO)
+    def info(self, message: str) -> None:
+        self.logger.info(message)
 
-    # Prevent duplicate handlers if called multiple times
-    if not logger.handlers:
-        formatter = logging.Formatter(
-            '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-        )
+    def error(self, message: str, exc: Optional[Exception] = None) -> None:
+        if exc:
+            self.logger.error(f"{message}: {str(exc)}", exc_info=True)
+        else:
+            self.logger.error(message)
 
-        # File rotation handler
-        file_handler = RotatingFileHandler(
-            LOG_FILE, 
-            maxBytes=MAX_BYTES, 
-            backupCount=BACKUP_COUNT
-        )
-        file_handler.setFormatter(formatter)
-        logger.addHandler(file_handler)
+    def warning(self, message: str) -> None:
+        self.logger.warning(message)
 
-        # Optional console output
-        console_handler = logging.StreamHandler()
-        console_handler.setFormatter(formatter)
-        logger.addHandler(console_handler)
-
-    return logger
+def get_logger(name: str = "cli-helper-26") -> DataLogger:
+    """Factory function for consistent logger instances."""
+    return DataLogger(name)
