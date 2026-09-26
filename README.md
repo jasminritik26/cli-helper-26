@@ -1,65 +1,58 @@
 # cli-helper-26
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-
-`cli-helper-26` is a lightweight Python library designed to streamline the creation of interactive command-line interfaces. It provides intuitive abstractions for colored console output, formatted data tables, and asynchronous progress indicators with zero external dependencies.
+`cli-helper-26` is a lightweight Python utility library designed to streamline the development of robust command-line interfaces. It provides a set of wrappers to handle argument parsing, colorful logging, and terminal formatting with minimal boilerplate.
 
 ## Features
 
-* **Interactive Prompts**: Styled confirmation dialogs, multi-select menus, and masked password inputs out of the box.
-* **Lightweight Formatting**: Render clean ASCII tables, key-value trees, and ANSI-colored text without heavy frameworks.
-* **Non-blocking Spinners**: Thread-safe loading indicators and progress bars that integrate seamlessly with `asyncio` workflows.
-* **Configuration Parser**: Automatic discovery and validation of JSON/YAML configuration files into typed CLI contexts.
+*   **Smart Argument Validation**: Built-in decorators to enforce type checking and range constraints on CLI arguments.
+*   **Intuitive Logging**: Pre-configured handlers for standardized STDOUT/STDERR output with automatic ANSI color support.
+*   **Configuration Persistence**: Automatic JSON-based session saving to cache user preferences between executions.
+*   **Zero-Dependency Core**: Developed with pure Python to ensure high compatibility and minimal bloat in containerized environments.
 
 ## Installation
 
-Install the package via `pip`:
+Install the package via pip:
 
 ```bash
 pip install cli-helper-26
 ```
 
-Or install directly from the source repository:
+If you are developing locally, clone the repository and install in editable mode:
 
 ```bash
 git clone https://github.com/Developer/cli-helper-26.git
 cd cli-helper-26
-pip install .
+pip install -e .
 ```
 
-## Quick Start
+## Basic Usage
 
-Here is a basic example showing how to collect input and display a spinner:
+Integrate `cli-helper-26` into your project to handle complex CLI flows effortlessly:
 
 ```python
-from cli_helper_26 import Console, Prompt, Spinner
-import time
+from cli_helper import CommandManager, Logger
 
-console = Console()
-console.header("Deployment Script")
+# Initialize the manager
+cli = CommandManager(name="my-tool")
+log = Logger()
 
-# Interactive prompt
-environment = Prompt.choice("Select target environment", ["staging", "production"])
+@cli.command("greet")
+def greet(name: str):
+    """Greets the user."""
+    log.info(f"Hello, {name}!")
 
-# Progress indicator
-with Spinner("Deploying application..."):
-    time.sleep(1.5)
-
-console.success(f"Successfully deployed to {environment}!")
+if __name__ == "__main__":
+    cli.run()
 ```
 
-To render structured data:
+Run your script from the terminal:
 
-```python
-from cli_helper_26 import Table
-
-table = Table(headers=["ID", "Service", "Status"])
-table.add_row([1, "Auth API", "Running"])
-table.add_row([2, "Database", "Healthy"])
-
-console.render(table)
+```bash
+python main.py greet --name "Developer"
 ```
 
 ## License
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 Distributed under the MIT License. See `LICENSE` for more information.
