@@ -1,35 +1,37 @@
 import logging
-import sys
-from typing import Optional
+import os
+from logging.handlers import RotatingFileHandler
+from pathlib import Path
 
-class DataLogger:
-    """Utility for standardized application logging."""
-    
-    def __init__(self, name: str = "cli-helper-26", level: int = logging.INFO):
-        self.logger = logging.getLogger(name)
-        self.logger.setLevel(level)
-        
-        # prevent duplicate handlers in interactive sessions
-        if not self.logger.handlers:
-            handler = logging.StreamHandler(sys.stdout)
-            formatter = logging.Formatter(
-                '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-            )
-            handler.setFormatter(formatter)
-            self.logger.addHandler(handler)
+LOG_DIR = Path("logs")
+LOG_FILE = LOG_DIR / "app.log"
 
-    def info(self, message: str) -> None:
-        self.logger.info(message)
+def setup_logger(name: str = "cli-helper-26") -> logging.Logger:
+    """Configures a rotating file logger."""
+    if not LOG_DIR.exists():
+        LOG_DIR.mkdir(parents=True, exist_ok=True)
 
-    def error(self, message: str, exc: Optional[Exception] = None) -> None:
-        if exc:
-            self.logger.error(f"{message}: {str(exc)}", exc_info=True)
-        else:
-            self.logger.error(message)
+    logger = logging.getLogger(name)
+    logger.setLevel(logging.INFO)
 
-    def warning(self, message: str) -> None:
-        self.logger.warning(message)
+    # Prevent duplicate handlers if setup is called multiple times
+    if not logger.handlers:
+        formatter = logging.Formatter(
+            "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+        )
 
-def get_logger(name: str = "cli-helper-26") -> DataLogger:
-    """Factory function for consistent logger instances."""
-    return DataLogger(name)
+        # Rotate logs: max 5MB per file, keep 3 backups
+        handler = RotatingFileHandler(
+            LOG_FILE,
+            maxBytes=5 * 1024 * 1024,
+            backupCount=3
+        )
+        handler.setFormatter(formatter)
+        logger.addHandler(handler)
+
+        # Optional: Log to console as well
+        console_handler = logging.StreamHandler()
+        console_handler.setFormatter(formatter)
+        logger.addHandler(console_handler)
+
+    return logger
