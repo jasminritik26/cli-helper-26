@@ -1,35 +1,32 @@
-import time
-import functools
-import logging
+import json
+import os
+from typing import Any, Optional
 
-logger = logging.getLogger(__name__)
+def load_json_file(file_path: str) -> dict[str, Any]:
+    """Reads and parses a JSON file into a dictionary."""
+    if not os.path.exists(file_path):
+        return {}
+    try:
+        with open(file_path, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except (json.JSONDecodeError, IOError):
+        return {}
 
-def retry(max_attempts=3, delay=1, backoff=2, exceptions=(Exception,)):
-    """
-    Decorator for retrying network operations with exponential backoff.
-    
-    :param max_attempts: Maximum number of retries.
-    :param delay: Initial delay between retries in seconds.
-    :param backoff: Multiplier for the delay after each failure.
-    :param exceptions: Tuple of exception types to trigger a retry.
-    """
-    def decorator(func):
-        @functools.wraps(func)
-        def wrapper(*args, **kwargs):
-            attempts = 0
-            current_delay = delay
-            while attempts < max_attempts:
-                try:
-                    return func(*args, **kwargs)
-                except exceptions as e:
-                    attempts += 1
-                    if attempts >= max_attempts:
-                        logger.error(f"Final attempt {attempts} failed: {e}")
-                        raise
-                    
-                    logger.warning(f"Attempt {attempts} failed: {e}. Retrying in {current_delay}s...")
-                    time.sleep(current_delay)
-                    current_delay *= backoff
-            return None
-        return wrapper
-    return decorator
+def save_json_file(data: dict[str, Any], file_path: str) -> bool:
+    """Writes a dictionary to a JSON file formatted with indentation."""
+    try:
+        with open(file_path, 'w', encoding='utf-8') as f:
+            json.dump(data, f, indent=4, sort_keys=True)
+        return True
+    except (TypeError, IOError):
+        return False
+
+def sanitize_input(value: Any) -> str:
+    """Converts input to a stripped string safely."""
+    if value is None:
+        return ""
+    return str(value).strip()
+
+def get_env_var(key: str, default: Optional[str] = None) -> str:
+    """Retrieves environment variable with fallback default."""
+    return os.environ.get(key, default) or ""
