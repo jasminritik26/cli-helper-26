@@ -1,36 +1,29 @@
-import logging
-from typing import Any, Dict, Optional
+import json
+from typing import Any, Optional, Dict
 
-class RequestHandler:
-    """Processes incoming requests for cli-helper-26."""
+def safe_load_json(file_path: str) -> Optional[Dict[str, Any]]:
+    """Reads and parses a JSON file with basic error handling."""
+    try:
+        with open(file_path, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError, IOError):
+        return None
 
-    def __init__(self, debug: bool = False):
-        self.logger = logging.getLogger(__name__)
-        self.debug = debug
+def clean_data_dict(data: Dict[str, Any]) -> Dict[str, Any]:
+    """Removes null values from a dictionary recursively."""
+    cleaned = {}
+    for key, value in data.items():
+        if isinstance(value, dict):
+            nested = clean_data_dict(value)
+            if nested:
+                cleaned[key] = nested
+        elif value is not None:
+            cleaned[key] = value
+    return cleaned
 
-    def validate_payload(self, data: Dict[str, Any]) -> bool:
-        """Ensures payload contains required keys."""
-        required = {'command', 'args'}
-        return all(key in data for key in required)
-
-    def process(self, request: Dict[str, Any]) -> Optional[Dict[str, Any]]:
-        """Executes command logic and returns result."""
-        if not self.validate_payload(request):
-            self.logger.error("Invalid payload structure received")
-            return None
-
-        try:
-            cmd = request['command']
-            args = request.get('args', [])
-            self.logger.info(f"Executing {cmd} with {len(args)} args")
-            
-            # Simulated core execution logic
-            result = {"status": "success", "data": f"processed {cmd}"}
-            return result
-        except Exception as e:
-            self.logger.exception(f"Execution failure: {e}")
-            return {"status": "error", "message": str(e)}
-
-def create_handler(debug: bool = False) -> RequestHandler:
-    """Factory method for handler instantiation."""
-    return RequestHandler(debug=debug)
+def format_output(data: Any, indent: int = 4) -> str:
+    """Serializes data to a formatted JSON string."""
+    try:
+        return json.dumps(data, indent=indent, sort_keys=True)
+    except (TypeError, ValueError):
+        return str(data)
