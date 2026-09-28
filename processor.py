@@ -1,32 +1,36 @@
-import time
-import functools
-import logging
+import sys
 
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+def validate_input(user_input):
+    """Checks if input is non-empty and alphanumeric."""
+    if not user_input or not user_input.isalnum():
+        return False
+    return True
 
-def retry_operation(retries=3, delay=2, backoff=2):
-    """Decorator for retrying network operations with exponential backoff."""
-    def decorator(func):
-        @functools.wraps(func)
-        def wrapper(*args, **kwargs):
-            current_delay = delay
-            for attempt in range(retries):
-                try:
-                    return func(*args, **kwargs)
-                except (ConnectionError, TimeoutError) as e:
-                    if attempt == retries - 1:
-                        logger.error(f"Final attempt failed: {e}")
-                        raise
-                    logger.warning(f"Attempt {attempt + 1} failed: {e}. Retrying...")
-                    time.sleep(current_delay)
-                    current_delay *= backoff
-            return None
-        return wrapper
-    return decorator
+def run_processing_loop():
+    """Main loop with input validation for cli-helper-26."""
+    print("Starting cli-helper-26. Enter 'exit' to quit.")
+    
+    while True:
+        try:
+            user_input = input(">> ").strip()
+            
+            if user_input.lower() == 'exit':
+                print("Exiting loop.")
+                break
+            
+            if not validate_input(user_input):
+                print("Error: invalid input. Please use alphanumeric characters.")
+                continue
+                
+            process_data(user_input)
+            
+        except (KeyboardInterrupt, EOFError):
+            print("\nSession terminated.")
+            break
 
-@retry_operation(retries=3, delay=1)
-def fetch_data(url):
-    """Simulates a network request prone to transient errors."""
-    logger.info(f"Fetching from {url}...")
-    raise ConnectionError("Server unreachable")
+def process_data(data):
+    """Placeholder for core logic."""
+    print(f"Processing: {data}")
+
+if __name__ == '__main__':
+    run_processing_loop()
