@@ -1,38 +1,40 @@
 import os
-import json
-import sys
+import logging
 from typing import Any, Optional
 
-def load_json(filepath: str) -> Optional[dict]:
-    """Reads and parses a JSON file from disk."""
-    if not os.path.exists(filepath):
+logger = logging.getLogger(__name__)
+
+def safe_read_file(filepath: str) -> Optional[str]:
+    """Reads file content with robust error handling for missing files."""
+    if not filepath:
+        logger.error("invalid file path provided")
         return None
+
     try:
         with open(filepath, 'r', encoding='utf-8') as f:
-            return json.load(f)
-    except (json.JSONDecodeError, IOError):
-        return None
+            return f.read()
+    except FileNotFoundError:
+        logger.warning(f"file not found: {filepath}")
+    except PermissionError:
+        logger.error(f"permission denied for: {filepath}")
+    except OSError as e:
+        logger.error(f"os error reading {filepath}: {e}")
+    return None
 
-def save_json(filepath: str, data: dict) -> bool:
-    """Serializes data to a JSON file."""
+def get_env_variable(key: str, default: Any = None) -> Any:
+    """Fetches environment variable with fallback logic."""
     try:
-        with open(filepath, 'w', encoding='utf-8') as f:
-            json.dump(data, f, indent=4)
-        return True
-    except IOError:
-        return False
+        return os.environ.get(key, default)
+    except Exception as e:
+        logger.error(f"unexpected environment error for {key}: {e}")
+        return default
 
-def ensure_dir(directory: str) -> None:
-    """Creates a directory if it does not exist."""
-    if not os.path.exists(directory):
-        os.makedirs(directory)
-
-def get_input(prompt: str, default: Any = None) -> str:
-    """Handles standard input with optional default values."""
-    user_input = input(f"{prompt} [{default}]: ").strip()
-    return user_input if user_input else str(default)
-
-def exit_with_msg(message: str, code: int = 1) -> None:
-    """Graceful script termination with status message."""
-    print(message)
-    sys.exit(code)
+def parse_input(data: Any) -> str:
+    """Sanitizes and casts input data safely."""
+    try:
+        if data is None:
+            return ""
+        return str(data).strip()
+    except (ValueError, TypeError) as e:
+        logger.error(f"failed to cast data: {e}")
+        return ""
