@@ -1,49 +1,34 @@
-import os
 import json
-import sys
+import os
 from typing import Any, Dict
 
-DEFAULT_CONFIG: Dict[str, Any] = {
-    "verbose": False,
-    "max_retries": 3,
-    "timeout": 30.0,
-    "api_url": "https://api.cli-helper.local",
-    "output_format": "json"
+DEFAULT_CONFIG = {
+    "version": "1.0.0",
+    "debug": False,
+    "log_level": "INFO",
+    "timeout": 30
 }
 
-class ConfigLoader:
-    """Loads configuration from a JSON file, falling back to defaults and environment variables."""
+def load_config(config_path: str = "config.json") -> Dict[str, Any]:
+    """Loads configuration from file with defaults."""
+    config = DEFAULT_CONFIG.copy()
 
-    def __init__(self, config_path: str | None = None):
-        self.config_path = config_path
-        self.config = DEFAULT_CONFIG.copy()
-        self.load()
+    if os.path.exists(config_path):
+        try:
+            with open(config_path, "r") as f:
+                user_config = json.load(f)
+                config.update(user_config)
+        except (json.JSONDecodeError, IOError):
+            pass
 
-    def load(self) -> None:
-        """Loads configuration from file and applies environment overrides."""
-        if self.config_path and os.path.exists(self.config_path):
-            try:
-                with open(self.config_path, "r", encoding="utf-8") as f:
-                    file_config = json.load(f)
-                    if isinstance(file_config, dict):
-                        self.config.update(file_config)
-            except (json.JSONDecodeError, OSError) as err:
-                print(f"Warning: Failed to load config file ({err}). Using defaults.", file=sys.stderr)
+    return config
 
-        # Override with environment variables if present (prefixed with CLI_HELPER_)
-        for key in self.config:
-            env_key = f"CLI_HELPER_{key.upper()}"
-            if env_key in os.environ:
-                val = os.environ[env_key]
-                default_type = type(self.config[key])
-                try:
-                    if default_type is bool:
-                        self.config[key] = val.lower() in ("true", "1", "yes", "on")
-                    else:
-                        self.config[key] = default_type(val)
-                except ValueError:
-                    pass
+def save_config(config: Dict[str, Any], config_path: str = "config.json") -> None:
+    """Persists current configuration to file."""
+    with open(config_path, "w") as f:
+        json.dump(config, f, indent=4)
 
-    def get(self, key: str) -> Any:
-        """Retrieves a config value by its key."""
-        return self.config.get(key)
+if __name__ == "__main__":
+    # usage example
+    settings = load_config()
+    print(f"Loaded settings: {settings}")
