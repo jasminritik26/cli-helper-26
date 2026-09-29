@@ -1,49 +1,38 @@
-"""Common utility helpers for CLI operations."""
+import functools
+import time
+import logging
 
-import sys
-from typing import Dict, List, Optional
+# Configure logger for core operations
+logger = logging.getLogger('cli-helper-26')
 
+# Cache for compute-intensive function results
+_CACHE = {}
 
-def format_bytes(size_in_bytes: int) -> str:
-    """Convert a byte count into a human-readable string format."""
-    if size_in_bytes < 0:
-        raise ValueError("Size cannot be negative")
-    units = ["B", "KB", "MB", "GB", "TB"]
-    size = float(size_in_bytes)
-    for unit in units:
-        if size < 1024.0 or unit == units[-1]:
-            return f"{size:.2f} {unit}" if unit != "B" else f"{int(size)} B"
-        size /= 1024.0
-    return f"{size:.2f} TB"
+def memoize_process(func):
+    """Decorator to cache function results based on arguments."""
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        key = (func.__name__, args, frozenset(kwargs.items()))
+        if key not in _CACHE:
+            _CACHE[key] = func(*args, **kwargs)
+        return _CACHE[key]
+    return wrapper
 
+def batch_process(data_list, chunk_size=100):
+    """Generator for memory-efficient batch processing."""
+    for i in range(0, len(data_list), chunk_size):
+        yield data_list[i:i + chunk_size]
 
-def confirm_prompt(prompt_text: str, default_yes: bool = True) -> bool:
-    """Ask user a yes/no question via standard input and return boolean result."""
-    suffix = " [Y/n]: " if default_yes else " [y/N]: "
-    sys.stdout.write(prompt_text + suffix)
-    sys.stdout.flush()
+@memoize_process
+def intensive_transform(data: str) -> str:
+    """Example of an expensive string transformation."""
+    time.sleep(0.1)
+    return data.strip().upper()
 
-    response = sys.stdin.readline().strip().lower()
-    if not response:
-        return default_yes
-    return response in ("y", "yes")
-
-
-def parse_key_value_pairs(raw_items: List[str]) -> Dict[str, str]:
-    """Parse a list of key=value CLI arguments into a dictionary."""
-    parsed = {}
-    for item in raw_items:
-        if "=" not in item:
-            continue
-        key, value = item.split("=", 1)
-        key = key.strip()
-        if key:
-            parsed[key] = value.strip()
-    return parsed
-
-
-def truncate_string(text: str, max_len: int = 40, suffix: str = "...") -> str:
-    """Truncate text to a maximum length and append a suffix if needed."""
-    if len(text) <= max_len:
-        return text
-    return text[: max_len - len(suffix)] + suffix
+def optimized_data_handler(items):
+    """Batch processor using generator expressions."""
+    results = []
+    for batch in batch_process(items):
+        transformed = [intensive_transform(item) for item in batch]
+        results.extend(transformed)
+    return results
