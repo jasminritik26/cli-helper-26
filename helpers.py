@@ -1,40 +1,49 @@
-import os
-import logging
-from typing import Any, Optional
+"""Common utility helpers for CLI operations."""
 
-logger = logging.getLogger(__name__)
+import sys
+from typing import Dict, List, Optional
 
-def safe_read_file(filepath: str) -> Optional[str]:
-    """Reads file content with robust error handling for missing files."""
-    if not filepath:
-        logger.error("invalid file path provided")
-        return None
 
-    try:
-        with open(filepath, 'r', encoding='utf-8') as f:
-            return f.read()
-    except FileNotFoundError:
-        logger.warning(f"file not found: {filepath}")
-    except PermissionError:
-        logger.error(f"permission denied for: {filepath}")
-    except OSError as e:
-        logger.error(f"os error reading {filepath}: {e}")
-    return None
+def format_bytes(size_in_bytes: int) -> str:
+    """Convert a byte count into a human-readable string format."""
+    if size_in_bytes < 0:
+        raise ValueError("Size cannot be negative")
+    units = ["B", "KB", "MB", "GB", "TB"]
+    size = float(size_in_bytes)
+    for unit in units:
+        if size < 1024.0 or unit == units[-1]:
+            return f"{size:.2f} {unit}" if unit != "B" else f"{int(size)} B"
+        size /= 1024.0
+    return f"{size:.2f} TB"
 
-def get_env_variable(key: str, default: Any = None) -> Any:
-    """Fetches environment variable with fallback logic."""
-    try:
-        return os.environ.get(key, default)
-    except Exception as e:
-        logger.error(f"unexpected environment error for {key}: {e}")
-        return default
 
-def parse_input(data: Any) -> str:
-    """Sanitizes and casts input data safely."""
-    try:
-        if data is None:
-            return ""
-        return str(data).strip()
-    except (ValueError, TypeError) as e:
-        logger.error(f"failed to cast data: {e}")
-        return ""
+def confirm_prompt(prompt_text: str, default_yes: bool = True) -> bool:
+    """Ask user a yes/no question via standard input and return boolean result."""
+    suffix = " [Y/n]: " if default_yes else " [y/N]: "
+    sys.stdout.write(prompt_text + suffix)
+    sys.stdout.flush()
+
+    response = sys.stdin.readline().strip().lower()
+    if not response:
+        return default_yes
+    return response in ("y", "yes")
+
+
+def parse_key_value_pairs(raw_items: List[str]) -> Dict[str, str]:
+    """Parse a list of key=value CLI arguments into a dictionary."""
+    parsed = {}
+    for item in raw_items:
+        if "=" not in item:
+            continue
+        key, value = item.split("=", 1)
+        key = key.strip()
+        if key:
+            parsed[key] = value.strip()
+    return parsed
+
+
+def truncate_string(text: str, max_len: int = 40, suffix: str = "...") -> str:
+    """Truncate text to a maximum length and append a suffix if needed."""
+    if len(text) <= max_len:
+        return text
+    return text[: max_len - len(suffix)] + suffix
