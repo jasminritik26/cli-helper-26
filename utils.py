@@ -1,32 +1,33 @@
-import json
-import os
-from typing import Any, Optional
+import time
+import functools
+import logging
+from typing import Callable, Any
 
-def load_json_file(file_path: str) -> dict[str, Any]:
-    """Reads and parses a JSON file into a dictionary."""
-    if not os.path.exists(file_path):
-        return {}
-    try:
-        with open(file_path, 'r', encoding='utf-8') as f:
-            return json.load(f)
-    except (json.JSONDecodeError, IOError):
-        return {}
+logger = logging.getLogger(__name__)
 
-def save_json_file(data: dict[str, Any], file_path: str) -> bool:
-    """Writes a dictionary to a JSON file formatted with indentation."""
-    try:
-        with open(file_path, 'w', encoding='utf-8') as f:
-            json.dump(data, f, indent=4, sort_keys=True)
-        return True
-    except (TypeError, IOError):
-        return False
+def retry_operation(retries: int = 3, delay: float = 1.0, backoff: float = 2.0):
+    """Decorator for retrying functions on exception."""
+    def decorator(func: Callable):
+        @functools.wraps(func)
+        def wrapper(*args: Any, **kwargs: Any) -> Any:
+            local_retries = retries
+            current_delay = delay
+            while True:
+                try:
+                    return func(*args, **kwargs)
+                except Exception as e:
+                    local_retries -= 1
+                    if local_retries < 0:
+                        logger.error(f"Final attempt failed: {e}")
+                        raise
+                    
+                    logger.warning(f"Retrying in {current_delay}s... (Attempts left: {local_retries})")
+                    time.sleep(current_delay)
+                    current_delay *= backoff
+        return wrapper
+    return decorator
 
-def sanitize_input(value: Any) -> str:
-    """Converts input to a stripped string safely."""
-    if value is None:
-        return ""
-    return str(value).strip()
-
-def get_env_var(key: str, default: Optional[str] = None) -> str:
-    """Retrieves environment variable with fallback default."""
-    return os.environ.get(key, default) or ""
+@retry_operation(retries=3, delay=2.0)
+def network_request_wrapper(request_func: Callable, *args, **kwargs):
+    """Example usage for external network calls."""
+    return request_func(*args, **kwargs)
