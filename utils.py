@@ -1,33 +1,43 @@
-import time
-import functools
-import logging
-from typing import Callable, Any
+import json
+from typing import Any, Dict, List, Optional
 
-logger = logging.getLogger(__name__)
 
-def retry_operation(retries: int = 3, delay: float = 1.0, backoff: float = 2.0):
-    """Decorator for retrying functions on exception."""
-    def decorator(func: Callable):
-        @functools.wraps(func)
-        def wrapper(*args: Any, **kwargs: Any) -> Any:
-            local_retries = retries
-            current_delay = delay
-            while True:
-                try:
-                    return func(*args, **kwargs)
-                except Exception as e:
-                    local_retries -= 1
-                    if local_retries < 0:
-                        logger.error(f"Final attempt failed: {e}")
-                        raise
-                    
-                    logger.warning(f"Retrying in {current_delay}s... (Attempts left: {local_retries})")
-                    time.sleep(current_delay)
-                    current_delay *= backoff
-        return wrapper
-    return decorator
+def flatten_dict(
+    data: Dict[str, Any], parent_key: str = "", sep: str = "."
+) -> Dict[str, Any]:
+    """Recursively flatten a nested dictionary for standard key-value output."""
+    items: List[tuple] = []
+    for key, value in data.items():
+        new_key = f"{parent_key}{sep}{key}" if parent_key else str(key)
+        if isinstance(value, dict) and value:
+            items.extend(flatten_dict(value, new_key, sep=sep).items())
+        else:
+            items.append((new_key, value))
+    return dict(items)
 
-@retry_operation(retries=3, delay=2.0)
-def network_request_wrapper(request_func: Callable, *args, **kwargs):
-    """Example usage for external network calls."""
-    return request_func(*args, **kwargs)
+
+def sanitize_cli_data(data: Dict[str, Any]) -> Dict[str, Any]:
+    """Clean dictionary values into safe strings for CLI output or logging."""
+    cleaned: Dict[str, Any] = {}
+    for key, value in data.items():
+        if value is None:
+            continue
+        if isinstance(value, (dict, list, tuple)):
+            cleaned[key] = json.dumps(value)
+        else:
+            cleaned[key] = str(value)
+    return cleaned
+
+
+def filter_by_keys(
+    data: Dict[str, Any],
+    include: Optional[List[str]] = None,
+    exclude: Optional[List[str]] = None,
+) -> Dict[str, Any]:
+    """Filter dictionary key-value pairs based on inclusion and exclusion rules."""
+    result = data.copy()
+    if include is not None:
+        result = {k: v for k, v in result.items() if k in include}
+    if exclude is not None:
+        result = {k: v for k, v in result.items() if k not in exclude}
+    return result
