@@ -1,38 +1,35 @@
-import functools
 import time
+from functools import wraps
 import logging
 
-# Configure logger for core operations
-logger = logging.getLogger('cli-helper-26')
+logger = logging.getLogger(__name__)
 
-# Cache for compute-intensive function results
-_CACHE = {}
-
-def memoize_process(func):
-    """Decorator to cache function results based on arguments."""
-    @functools.wraps(func)
-    def wrapper(*args, **kwargs):
-        key = (func.__name__, args, frozenset(kwargs.items()))
-        if key not in _CACHE:
-            _CACHE[key] = func(*args, **kwargs)
-        return _CACHE[key]
-    return wrapper
-
-def batch_process(data_list, chunk_size=100):
-    """Generator for memory-efficient batch processing."""
-    for i in range(0, len(data_list), chunk_size):
-        yield data_list[i:i + chunk_size]
-
-@memoize_process
-def intensive_transform(data: str) -> str:
-    """Example of an expensive string transformation."""
-    time.sleep(0.1)
-    return data.strip().upper()
-
-def optimized_data_handler(items):
-    """Batch processor using generator expressions."""
-    results = []
-    for batch in batch_process(items):
-        transformed = [intensive_transform(item) for item in batch]
-        results.extend(transformed)
-    return results
+def retry(retries=3, delay=1.0, backoff=2.0, exceptions=(Exception,)):
+    """
+    Decorator to retry a function call with exponential backoff.
+    
+    :param retries: Number of retry attempts before giving up.
+    :param delay: Initial delay between retries in seconds.
+    :param backoff: Multiplier applied to delay after each retry.
+    :param exceptions: A tuple of exceptions to catch and retry on.
+    """
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            attempt_delay = delay
+            for attempt in range(1, retries + 1):
+                try:
+                    return func(*args, **kwargs)
+                except exceptions as e:
+                    if attempt == retries:
+                        logger.error(f"Failed '{func.__name__}' after {retries} attempts. Error: {e}")
+                        raise e
+                    
+                    logger.warning(
+                        f"Attempt {attempt}/{retries} failed for '{func.__name__}'. "
+                        f"Retrying in {attempt_delay:.2f} seconds... Error: {e}"
+                    )
+                    time.sleep(attempt_delay)
+                    attempt_delay *= backoff
+        return wrapper
+    return decorator
