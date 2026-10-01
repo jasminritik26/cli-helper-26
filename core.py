@@ -1,39 +1,38 @@
-import sys
+import functools
+import time
+from typing import Callable, Any
 
-def validate_input(user_input):
-    """Ensures input is non-empty and within expected length."""
-    if not user_input or not user_input.strip():
-        return False, "Input cannot be empty."
-    if len(user_input) > 255:
-        return False, "Input exceeds maximum length of 255 characters."
-    return True, None
+# global cache for performance-critical path execution
+_CACHE = {}
 
-def run_main_loop():
-    """Main processing loop with integrated input validation."""
-    print("cli-helper-26 initialized. Enter 'exit' to quit.")
-    
-    while True:
-        try:
-            user_input = input(">> ").strip()
-            
-            if user_input.lower() == 'exit':
-                print("Exiting application.")
-                break
-            
-            is_valid, error_msg = validate_input(user_input)
-            
-            if not is_valid:
-                print(f"Validation error: {error_msg}")
-                continue
-                
-            # Processing logic placeholder
-            print(f"Processing: {user_input}")
-            
-        except (EOFError, KeyboardInterrupt):
-            print("\nSession terminated by user.")
-            break
-        except Exception as e:
-            print(f"Unexpected system error: {e}")
+def memoize_compute(func: Callable) -> Callable:
+    """decorator for persistent caching of expensive operations"""
+    @functools.wraps(func)
+    def wrapper(*args: Any, **kwargs: Any) -> Any:
+        key = (func.__name__, args, frozenset(kwargs.items()))
+        if key not in _CACHE:
+            _CACHE[key] = func(*args, **kwargs)
+        return _CACHE[key]
+    return wrapper
 
-if __name__ == "__main__":
-    run_main_loop()
+def batch_process(data: list, chunk_size: int = 100):
+    """generator for memory-efficient data chunking"""
+    for i in range(0, len(data), chunk_size):
+        yield data[i:i + chunk_size]
+
+class CoreProcessor:
+    """main processing engine with optimization layers"""
+    def __init__(self):
+        self.start_time = time.time()
+
+    @memoize_compute
+    def transform_data(self, dataset: tuple) -> list:
+        # simulated expensive computation optimized by caching
+        return [x * 2 for x in dataset]
+
+    def execute(self, items: list):
+        """optimized execution loop using batching"""
+        results = []
+        for batch in batch_process(items):
+            results.extend(self.transform_data(tuple(batch)))
+        return results
