@@ -1,57 +1,43 @@
-import os
-import shutil
+import re
 import sys
-from typing import Union
 
 
-def format_bytes(size_in_bytes: Union[int, float]) -> str:
-    """Format a byte count into a human-readable string (e.g., KiB, MiB)."""
-    if size_in_bytes < 0:
+def format_bytes(size: int) -> str:
+    """Convert byte counts into a human-readable string representation."""
+    if size < 0:
         raise ValueError("Size cannot be negative")
-
-    for unit in ["B", "KiB", "MiB", "GiB", "TiB"]:
-        if size_in_bytes < 1024.0:
-            return f"{size_in_bytes:.2f} {unit}"
-        size_in_bytes /= 1024.0
-    return f"{size_in_bytes:.2f} PiB"
-
-
-def confirm_action(prompt: str, default: bool = True) -> bool:
-    """Prompt the user for a yes/no confirmation in the terminal."""
-    valid_responses = {"y": True, "yes": True, "n": False, "no": False}
-    suffix = " [Y/n]" if default else " [y/N]"
-
-    while True:
-        sys.stdout.write(f"{prompt}{suffix}: ")
-        sys.stdout.flush()
-        choice = sys.stdin.readline().strip().lower()
-
-        if not choice:
-            return default
-
-        if choice in valid_responses:
-            return valid_responses[choice]
-
-        sys.stdout.write("Please respond with 'yes' or 'no' (or 'y' or 'n').\n")
+    units = ["B", "KB", "MB", "GB", "TB", "PB"]
+    value = float(size)
+    for unit in units:
+        if value < 1024.0 or unit == units[-1]:
+            return f"{value:.1f} {unit}" if unit != "B" else f"{int(value)} B"
+        value /= 1024.0
+    return f"{value:.1f} PB"
 
 
-def truncate_string(text: str, max_length: int, suffix: str = "...") -> str:
-    """Truncate a string to a maximum length, appending a suffix if truncated."""
+def truncate_string(text: str, max_length: int = 50, suffix: str = "...") -> str:
+    """Truncate text to a maximum length and append suffix if needed."""
     if len(text) <= max_length:
         return text
-
-    adjusted_len = max_length - len(suffix)
-    if adjusted_len <= 0:
+    if max_length <= len(suffix):
         return suffix[:max_length]
+    return text[: max_length - len(suffix)] + suffix
 
-    return text[:adjusted_len] + suffix
+
+def sanitize_filename(name: str, replacement: str = "_") -> str:
+    """Remove unsafe characters from a string to create a safe filename."""
+    clean_name = re.sub(r'[\\/*?:"<>|]', replacement, name)
+    clean_name = clean_name.strip(". ")
+    return clean_name or "unnamed_file"
 
 
-def get_terminal_width(fallback: int = 80) -> int:
-    """Retrieve the current terminal width, falling back to a default value."""
-    try:
-        columns, _ = shutil.get_terminal_size(fallback=(fallback, 24))
-        return columns
-    except (AttributeError, ValueError):
-        # Fallback for environments without standard terminal access
-        return int(os.environ.get("COLUMNS", fallback))
+def prompt_confirm(message: str, default: bool = True) -> bool:
+    """Ask a yes/no question via standard input and return boolean."""
+    hint = "[Y/n]" if default else "[y/N]"
+    sys.stdout.write(f"{message} {hint} ")
+    sys.stdout.flush()
+    response = sys.stdin.readline().strip().lower()
+
+    if not response:
+        return default
+    return response in ("y", "yes")
