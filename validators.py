@@ -1,45 +1,33 @@
-from typing import Any, Optional
 import re
+from typing import Any, Optional
 
-def validate_email(email: str) -> bool:
-    """
-    Check if the provided string follows standard email format.
+class InputValidator:
+    """Utility class for standard CLI input validation."""
 
-    Args:
-        email (str): The email address to validate.
+    EMAIL_REGEX = r'^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$'
 
-    Returns:
-        bool: True if valid, False otherwise.
-    """
-    pattern = r'^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$'
-    return bool(re.match(pattern, email))
+    @staticmethod
+    def is_non_empty(value: Any) -> bool:
+        """Verify that the input is not empty or whitespace only."""
+        return bool(value and str(value).strip())
 
-def validate_port(port: Any) -> bool:
-    """
-    Verify that the input is a valid network port number.
+    @staticmethod
+    def is_email(email: str) -> bool:
+        """Check if string matches email format."""
+        if not email:
+            return False
+        return bool(re.match(InputValidator.EMAIL_REGEX, email))
 
-    Args:
-        port (Any): The port identifier to check.
+    @staticmethod
+    def range_check(value: int, min_val: int, max_val: int) -> bool:
+        """Ensure integer is within specified bounds."""
+        return min_val <= value <= max_val
 
-    Returns:
-        bool: True if within range [1, 65535], False otherwise.
-    """
-    try:
-        port_int = int(port)
-        return 1 <= port_int <= 65535
-    except (ValueError, TypeError):
-        return False
-
-def sanitize_input(value: Optional[str]) -> str:
-    """
-    Remove leading and trailing whitespace from input.
-
-    Args:
-        value (Optional[str]): The raw input string.
-
-    Returns:
-        str: Sanitized string or empty if input was None.
-    """
-    if value is None:
-        return ""
-    return str(value).strip()
+def validate_input(data: Any, criteria: str) -> bool:
+    """Proxy function for basic validation logic."""
+    validator = InputValidator()
+    if criteria == 'email':
+        return validator.is_email(data)
+    elif criteria == 'required':
+        return validator.is_non_empty(data)
+    return False
