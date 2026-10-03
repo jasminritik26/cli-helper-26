@@ -1,39 +1,34 @@
-import os
 import json
-from typing import Any, Optional
+import os
+from typing import Any, Dict
 
-def read_json(filepath: str) -> dict:
-    """Load and parse json from a file."""
+def load_config(filepath: str, defaults: Dict[str, Any]) -> Dict[str, Any]:
+    """Load configuration from JSON file or return defaults."""
     if not os.path.exists(filepath):
-        return {}
-    with open(filepath, 'r') as f:
-        try:
-            return json.load(f)
-        except json.JSONDecodeError:
-            return {}
+        return defaults
 
-def write_json(filepath: str, data: Any) -> bool:
-    """Serialize data to a json file."""
     try:
-        with open(filepath, 'w') as f:
-            json.dump(data, f, indent=4)
-        return True
-    except IOError:
-        return False
+        with open(filepath, 'r') as f:
+            config = json.load(f)
+            # Deep merge defaults with loaded config
+            final_config = defaults.copy()
+            final_config.update(config)
+            return final_config
+    except (json.JSONDecodeError, IOError):
+        return defaults
 
-def ensure_dir(path: str) -> None:
-    """Create directory path if not present."""
-    if not os.path.exists(path):
-        os.makedirs(path)
+def save_config(filepath: str, config: Dict[str, Any]) -> None:
+    """Persist configuration to JSON file."""
+    with open(filepath, 'w') as f:
+        json.dump(config, f, indent=4)
 
-def get_env_variable(key: str, default: Optional[str] = None) -> Optional[str]:
-    """Retrieve environment variable with fallback."""
-    return os.environ.get(key, default)
-
-def format_byte_size(size_bytes: int) -> str:
-    """Human readable string for byte sizes."""
-    for unit in ['B', 'KB', 'MB', 'GB']:
-        if size_bytes < 1024.0:
-            return f"{size_bytes:.2f} {unit}"
-        size_bytes /= 1024.0
-    return f"{size_bytes:.2f} TB"
+# Usage example for cli-helper-26
+if __name__ == "__main__":
+    default_settings = {
+        "verbose": False,
+        "retries": 3,
+        "log_level": "INFO"
+    }
+    
+    current_config = load_config("config.json", default_settings)
+    print(f"Active configuration: {current_config}")
