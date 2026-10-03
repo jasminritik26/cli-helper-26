@@ -1,34 +1,72 @@
-import json
-import os
-from typing import Any, Dict
+"""General utility helpers for formatting and interactive CLI operations."""
 
-def load_config(filepath: str, defaults: Dict[str, Any]) -> Dict[str, Any]:
-    """Load configuration from JSON file or return defaults."""
-    if not os.path.exists(filepath):
-        return defaults
+from typing import Dict, List, Optional
 
-    try:
-        with open(filepath, 'r') as f:
-            config = json.load(f)
-            # Deep merge defaults with loaded config
-            final_config = defaults.copy()
-            final_config.update(config)
-            return final_config
-    except (json.JSONDecodeError, IOError):
-        return defaults
 
-def save_config(filepath: str, config: Dict[str, Any]) -> None:
-    """Persist configuration to JSON file."""
-    with open(filepath, 'w') as f:
-        json.dump(config, f, indent=4)
+def format_header(title: str, width: int = 60, char: str = "=") -> str:
+    """Format a centered title header enclosed in border characters.
 
-# Usage example for cli-helper-26
-if __name__ == "__main__":
-    default_settings = {
-        "verbose": False,
-        "retries": 3,
-        "log_level": "INFO"
-    }
-    
-    current_config = load_config("config.json", default_settings)
-    print(f"Active configuration: {current_config}")
+    Args:
+        title: The string title to format inside the header.
+        width: Total width of the header line in characters.
+        char: Single character used to construct the border line.
+
+    Returns:
+        A formatted multi-line header string.
+    """
+    border = char * width
+    centered_title = title.center(width - 4)
+    return f"{border}\n{char} {centered_title} {char}\n{border}"
+
+
+def confirm_action(prompt: str, default: bool = False) -> bool:
+    """Prompt the user for a boolean yes/no confirmation.
+
+    Args:
+        prompt: The message displayed to the user.
+        default: Default return value if user presses Enter without typing.
+
+    Returns:
+        True if the user accepted, False otherwise.
+    """
+    options = "[Y/n]" if default else "[y/N]"
+    response = input(f"{prompt} {options}: ").strip().lower()
+
+    if not response:
+        return default
+    return response in ("y", "yes", "true", "1")
+
+
+def truncate_text(text: str, max_length: int, suffix: str = "...") -> str:
+    """Truncate text to a maximum length and attach a suffix if trimmed.
+
+    Args:
+        text: Target text string to truncate.
+        max_length: Maximum allowed character length including suffix.
+        suffix: Indicator appended to truncated strings.
+
+    Returns:
+        The original or truncated text string.
+    """
+    if len(text) <= max_length:
+        return text
+
+    trim_len = max(0, max_length - len(suffix))
+    return text[:trim_len] + suffix
+
+
+def parse_kv_pairs(args: List[str]) -> Dict[str, str]:
+    """Parse a list of key=value command-line strings into a dictionary.
+
+    Args:
+        args: List of raw arguments in 'key=value' format.
+
+    Returns:
+        Dictionary mapping string keys to string values.
+    """
+    result: Dict[str, str] = {}
+    for arg in args:
+        if "=" in arg:
+            key, val = arg.split("=", 1)
+            result[key.strip()] = val.strip()
+    return result
