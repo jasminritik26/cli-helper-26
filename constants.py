@@ -1,35 +1,40 @@
-import os
-from pathlib import Path
+import logging
 
-# Application path configurations
-BASE_DIR = Path(__file__).resolve().parent
-LOG_DIR = BASE_DIR / "logs"
-DATA_DIR = BASE_DIR / "data"
-
-# CLI environment defaults
+# Configuration constants for cli-helper-26
 DEFAULT_TIMEOUT = 30
 MAX_RETRIES = 3
-APP_NAME = "cli-helper-26"
+EXIT_SUCCESS = 0
+EXIT_FAILURE = 1
 
-# Supported formats for operations
-SUPPORTED_FORMATS = {".json", ".yaml", ".toml"}
-
-# Error message templates
-ERR_MISSING_CONFIG = "Configuration file not found in path."
-ERR_INVALID_FORMAT = "The provided file format is not supported."
-
-# UI theme constants
-THEME_COLORS = {
-    "info": "blue",
-    "success": "green",
-    "warning": "yellow",
-    "error": "red"
+# Error message mapping for user-facing feedback
+ERROR_MESSAGES = {
+    "connection_error": "Failed to establish connection. Check your network.",
+    "timeout_error": "Operation timed out after {} seconds.",
+    "validation_error": "Input data validation failed.",
+    "internal_error": "An unexpected internal error occurred.",
 }
 
-def ensure_directories():
-    """Initialize application filesystem structure."""
-    for directory in [LOG_DIR, DATA_DIR]:
-        directory.mkdir(parents=True, exist_ok=True)
+# Valid log levels mapping
+LOG_LEVELS = {
+    "debug": logging.DEBUG,
+    "info": logging.INFO,
+    "warning": logging.WARNING,
+    "error": logging.ERROR,
+    "critical": logging.CRITICAL,
+}
 
-# Ensure environment readiness
-ensure_directories()
+# Application path defaults
+DEFAULT_CONFIG_PATH = "~/.config/cli-helper/config.json"
+DEFAULT_LOG_PATH = "/var/log/cli-helper.log"
+
+# Constraint constants
+MIN_BUFFER_SIZE = 1024
+MAX_BUFFER_SIZE = 65536
+
+def get_error_message(key, *args):
+    """Retrieve formatted error messages safely."""
+    template = ERROR_MESSAGES.get(key, ERROR_MESSAGES["internal_error"])
+    try:
+        return template.format(*args)
+    except (IndexError, TypeError):
+        return template
