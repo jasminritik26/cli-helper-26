@@ -1,33 +1,27 @@
 import re
-from typing import Any, Optional
+import os
 
-class InputValidator:
-    """Utility class for standard CLI input validation."""
+def validate_email(email: str) -> bool:
+    """Verify email format using standard regex pattern."""
+    pattern = r'^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$'
+    return bool(re.match(pattern, email))
 
-    EMAIL_REGEX = r'^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$'
+def validate_path_exists(path: str) -> bool:
+    """Check if the provided filesystem path is valid and exists."""
+    return os.path.exists(path)
 
-    @staticmethod
-    def is_non_empty(value: Any) -> bool:
-        """Verify that the input is not empty or whitespace only."""
-        return bool(value and str(value).strip())
+def validate_integer_range(value: any, min_val: int, max_val: int) -> bool:
+    """Check if input is integer within specified inclusive range."""
+    try:
+        val = int(value)
+        return min_val <= val <= max_val
+    except (ValueError, TypeError):
+        return False
 
-    @staticmethod
-    def is_email(email: str) -> bool:
-        """Check if string matches email format."""
-        if not email:
-            return False
-        return bool(re.match(InputValidator.EMAIL_REGEX, email))
+def validate_alphanumeric(text: str) -> bool:
+    """Ensure string contains only letters and numbers."""
+    return text.isalnum()
 
-    @staticmethod
-    def range_check(value: int, min_val: int, max_val: int) -> bool:
-        """Ensure integer is within specified bounds."""
-        return min_val <= value <= max_val
-
-def validate_input(data: Any, criteria: str) -> bool:
-    """Proxy function for basic validation logic."""
-    validator = InputValidator()
-    if criteria == 'email':
-        return validator.is_email(data)
-    elif criteria == 'required':
-        return validator.is_non_empty(data)
-    return False
+def validate_non_empty(text: str) -> bool:
+    """Ensure string is not empty after stripping whitespace."""
+    return bool(text and text.strip())
