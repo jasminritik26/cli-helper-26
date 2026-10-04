@@ -3,33 +3,34 @@ import os
 from typing import Any, Dict
 
 DEFAULT_CONFIG = {
-    "version": "1.0.0",
-    "debug": False,
     "log_level": "INFO",
-    "timeout": 30
+    "timeout": 30,
+    "retry_attempts": 3
 }
 
-def load_config(config_path: str) -> Dict[str, Any]:
+def load_config(config_path: str = "config.json") -> Dict[str, Any]:
     """
-    Loads configuration from a JSON file, merging with defaults.
+    Loads configuration from JSON file, merging with system defaults.
+    Returns the populated dictionary.
     """
     config = DEFAULT_CONFIG.copy()
-
-    if not os.path.exists(config_path):
-        return config
-
-    try:
-        with open(config_path, 'r') as f:
-            user_config = json.load(f)
-            config.update(user_config)
-    except (json.JSONDecodeError, IOError):
-        pass
-
+    
+    if os.path.exists(config_path):
+        try:
+            with open(config_path, "r") as f:
+                user_config = json.load(f)
+                config.update(user_config)
+        except (json.JSONDecodeError, IOError) as e:
+            print(f"Warning: Could not load config {config_path}: {e}")
+            
     return config
 
-def save_config(config_path: str, config: Dict[str, Any]) -> None:
+def save_config(config: Dict[str, Any], config_path: str = "config.json") -> None:
     """
-    Persists configuration dictionary to a JSON file.
+    Persists current configuration dictionary to JSON file.
     """
-    with open(config_path, 'w') as f:
-        json.dump(config, f, indent=4)
+    try:
+        with open(config_path, "w") as f:
+            json.dump(config, f, indent=4)
+    except IOError as e:
+        print(f"Error: Could not save config to {config_path}: {e}")
