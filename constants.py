@@ -1,40 +1,34 @@
-import logging
+import os
+from pathlib import Path
 
-# Configuration constants for cli-helper-26
+# Application path definitions
+BASE_DIR = Path(__file__).resolve().parent
+LOG_DIR = BASE_DIR / "logs"
+
+# CLI configuration defaults
 DEFAULT_TIMEOUT = 30
 MAX_RETRIES = 3
-EXIT_SUCCESS = 0
-EXIT_FAILURE = 1
 
-# Error message mapping for user-facing feedback
-ERROR_MESSAGES = {
-    "connection_error": "Failed to establish connection. Check your network.",
-    "timeout_error": "Operation timed out after {} seconds.",
-    "validation_error": "Input data validation failed.",
-    "internal_error": "An unexpected internal error occurred.",
-}
+# Status codes for command operations
+STATUS_SUCCESS = 0
+STATUS_ERROR_GENERAL = 1
+STATUS_ERROR_PERMISSION = 2
+STATUS_ERROR_TIMEOUT = 3
 
-# Valid log levels mapping
-LOG_LEVELS = {
-    "debug": logging.DEBUG,
-    "info": logging.INFO,
-    "warning": logging.WARNING,
-    "error": logging.ERROR,
-    "critical": logging.CRITICAL,
-}
+# Supported file extensions
+ALLOWED_EXTENSIONS = {".json", ".yaml", ".yml", ".toml"}
 
-# Application path defaults
-DEFAULT_CONFIG_PATH = "~/.config/cli-helper/config.json"
-DEFAULT_LOG_PATH = "/var/log/cli-helper.log"
+# Environment variables
+ENV_PREFIX = "CLI_HELPER_"
+DEBUG_MODE = os.getenv(f"{ENV_PREFIX}DEBUG", "false").lower() == "true"
 
-# Constraint constants
-MIN_BUFFER_SIZE = 1024
-MAX_BUFFER_SIZE = 65536
+# Formatting constants
+HEADER_WIDTH = 80
+DEFAULT_INDENT = 4
 
-def get_error_message(key, *args):
-    """Retrieve formatted error messages safely."""
-    template = ERROR_MESSAGES.get(key, ERROR_MESSAGES["internal_error"])
-    try:
-        return template.format(*args)
-    except (IndexError, TypeError):
-        return template
+def get_version():
+    return "2.6.0"
+
+def get_log_path():
+    LOG_DIR.mkdir(exist_ok=True)
+    return LOG_DIR / "app.log"
