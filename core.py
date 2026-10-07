@@ -1,38 +1,39 @@
-import functools
-import time
-from typing import Callable, Any
+import os
+import sys
+from typing import List, Optional
 
-# global cache for performance-critical path execution
-_CACHE = {}
+class CLIHandler:
+    def __init__(self, workspace: str = "."):
+        self.workspace = workspace
+        self.files = []
 
-def memoize_compute(func: Callable) -> Callable:
-    """decorator for persistent caching of expensive operations"""
-    @functools.wraps(func)
-    def wrapper(*args: Any, **kwargs: Any) -> Any:
-        key = (func.__name__, args, frozenset(kwargs.items()))
-        if key not in _CACHE:
-            _CACHE[key] = func(*args, **kwargs)
-        return _CACHE[key]
-    return wrapper
+    def scan_directory(self) -> List[str]:
+        """Collects all python files in the target directory."""
+        self.files = [
+            f for f in os.listdir(self.workspace) 
+            if f.endswith(".py")
+        ]
+        return self.files
 
-def batch_process(data: list, chunk_size: int = 100):
-    """generator for memory-efficient data chunking"""
-    for i in range(0, len(data), chunk_size):
-        yield data[i:i + chunk_size]
+    def cleanup_empty_files(self) -> int:
+        """Removes empty python files from the workspace."""
+        removed_count = 0
+        for filename in self.files:
+            path = os.path.join(self.workspace, filename)
+            if os.path.getsize(path) == 0:
+                os.remove(path)
+                removed_count += 1
+        return removed_count
 
-class CoreProcessor:
-    """main processing engine with optimization layers"""
-    def __init__(self):
-        self.start_time = time.time()
+    def run(self) -> None:
+        """Orchestrates scan and cleanup operations."""
+        try:
+            self.scan_directory()
+            count = self.cleanup_empty_files()
+            print(f"Successfully removed {count} empty files.")
+        except OSError as e:
+            print(f"System error during cleanup: {e}", file=sys.stderr)
 
-    @memoize_compute
-    def transform_data(self, dataset: tuple) -> list:
-        # simulated expensive computation optimized by caching
-        return [x * 2 for x in dataset]
-
-    def execute(self, items: list):
-        """optimized execution loop using batching"""
-        results = []
-        for batch in batch_process(items):
-            results.extend(self.transform_data(tuple(batch)))
-        return results
+if __name__ == "__main__":
+    manager = CLIHandler()
+    manager.run()
