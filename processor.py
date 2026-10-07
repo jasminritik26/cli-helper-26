@@ -1,67 +1,31 @@
-import re
-import sys
-from typing import Dict, Any
+from typing import List, Dict, Any, Optional
 
-class ValidationError(Exception):
-    """Raised when input validation fails."""
-    pass
+class DataProcessor:
+    """Handles core data transformation logic for cli-helper-26."""
 
-class CLIProcessor:
-    """Processes and validates CLI commands from the user input loop."""
+    def __init__(self, prefix: str = "cli-") -> None:
+        self.prefix: str = prefix
 
-    def __init__(self):
-        self.allowed_commands = {"help", "exit", "version", "run", "config"}
-        self.command_pattern = re.compile(r"^[a-zA-Z0-9_\-\s]+$")
+    def sanitize_input(self, data: List[str]) -> List[str]:
+        """Remove whitespace and filter by internal prefix."""
+        return [item.strip() for item in data if item.startswith(self.prefix)]
 
-    def validate_raw_input(self, user_input: str) -> str:
-        """Validates basic shell inputs for safety and length."""
-        cleaned = user_input.strip()
-        if not cleaned:
-            raise ValidationError("Input cannot be empty")
-        if len(cleaned) > 200:
-            raise ValidationError("Input exceeds maximum length of 200 characters")
-        if not self.command_pattern.match(cleaned):
-            raise ValidationError("Input contains invalid characters")
-        return cleaned
+    def format_output(self, payload: Dict[str, Any]) -> str:
+        """Convert dictionary into a formatted key-value string."""
+        if not payload:
+            return "empty payload"
+        
+        items: List[str] = [f"{k}: {v}" for k, v in payload.items()]
+        return " | ".join(items)
 
-    def parse_command(self, validated_input: str) -> Dict[str, Any]:
-        """Parses and validates the command structures and arguments."""
-        parts = validated_input.split()
-        cmd = parts[0].lower()
+    def process_batch(self, items: List[Dict[str, Any]]) -> List[str]:
+        """Transform a list of dictionaries into formatted strings."""
+        results: List[str] = []
+        for entry in items:
+            processed: str = self.format_output(entry)
+            results.append(processed)
+        return results
 
-        if cmd not in self.allowed_commands:
-            raise ValidationError(f"Unknown command: '{cmd}'. Type 'help' for options")
-
-        return {
-            "command": cmd,
-            "args": parts[1:]
-        }
-
-    def process_loop(self) -> None:
-        """Main CLI input processing loop with strict validation."""
-        print("CLI Helper Processor Started. Type 'help' for commands, 'exit' to quit.")
-        while True:
-            try:
-                user_input = input("cli-helper> ")
-                validated = self.validate_raw_input(user_input)
-                parsed = self.parse_command(validated)
-
-                if parsed["command"] == "exit":
-                    print("Exiting CLI Helper.")
-                    break
-                elif parsed["command"] == "help":
-                    print(f"Available commands: {', '.join(sorted(self.allowed_commands))}")
-                elif parsed["command"] == "version":
-                    print("cli-helper-26 v1.0.0")
-                elif parsed["command"] == "run":
-                    if not parsed["args"]:
-                        raise ValidationError("Command 'run' requires at least one argument")
-                    print(f"Executing action with: {parsed['args']}")
-                elif parsed["command"] == "config":
-                    print(f"Configuration parameter adjusted: {parsed['args']}")
-
-            except ValidationError as ve:
-                print(f"Validation Error: {ve}", file=sys.stderr)
-            except KeyboardInterrupt:
-                print("\nSession interrupted. Exiting.")
-                break
+def get_instance(namespace: Optional[str] = None) -> DataProcessor:
+    """Factory function to generate processor instance."""
+    return DataProcessor(prefix=namespace or "cli-")
