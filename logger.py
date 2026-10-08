@@ -1,33 +1,38 @@
 import logging
-from logging.handlers import RotatingFileHandler
-import os
+import functools
+from typing import Callable, Any
 
-def setup_logger(name: str, log_file: str = 'app.log', level: int = logging.INFO) -> logging.Logger:
-    """Configures a rotating file logger for the application."""
-    logger = logging.getLogger(name)
-    logger.setLevel(level)
+# Configure global logger for cli-helper-26
+logger = logging.getLogger('cli_helper')
+logger.setLevel(logging.INFO)
 
-    # Prevent duplicate handlers if setup is called multiple times
-    if not logger.handlers:
-        # Ensure log directory exists
-        log_dir = os.path.dirname(log_file)
-        if log_dir and not os.path.exists(log_dir):
-            os.makedirs(log_dir)
+# Cache for memoized function results to optimize performance
+_cache = {}
 
-        # Rotation setup: 5MB per file, keep 3 backups
-        handler = RotatingFileHandler(
-            log_file, maxBytes=5 * 1024 * 1024, backupCount=3
-        )
-        
-        formatter = logging.Formatter(
-            '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-        )
-        handler.setFormatter(formatter)
-        logger.addHandler(handler)
+def memoize(func: Callable) -> Callable:
+    """Decorator for caching repetitive function results."""
+    @functools.wraps(func)
+    def wrapper(*args: Any, **kwargs: Any) -> Any:
+        key = (func.__name__, args, frozenset(kwargs.items()))
+        if key not in _cache:
+            _cache[key] = func(*args, **kwargs)
+        return _cache[key]
+    return wrapper
 
-        # Add console output as well
-        console_handler = logging.StreamHandler()
-        console_handler.setFormatter(formatter)
-        logger.addHandler(console_handler)
+def log_performance(func: Callable) -> Callable:
+    """Decorator for tracking execution time of critical functions."""
+    import time
+    @functools.wraps(func)
+    def wrapper(*args: Any, **kwargs: Any) -> Any:
+        start_time = time.perf_counter()
+        result = func(*args, **kwargs)
+        duration = time.perf_counter() - start_time
+        if duration > 0.1:
+            logger.warning(f'Performance bottleneck in {func.__name__}: {duration:.4f}s')
+        return result
+    return wrapper
 
-    return logger
+def clear_cache() -> None:
+    """Manual cache invalidation for memory management."""
+    _cache.clear()
+    logger.info('Logger cache cleared successfully')
