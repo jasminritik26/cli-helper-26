@@ -1,27 +1,34 @@
 import re
-import os
 
-def validate_email(email: str) -> bool:
-    """Verify email format using standard regex pattern."""
-    pattern = r'^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$'
-    return bool(re.match(pattern, email))
+class InputValidator:
+    """Utility class for processing and validating cli user input."""
 
-def validate_path_exists(path: str) -> bool:
-    """Check if the provided filesystem path is valid and exists."""
-    return os.path.exists(path)
+    @staticmethod
+    def validate_command(user_input: str) -> bool:
+        """Checks if input matches alphanumeric pattern."""
+        return bool(re.match(r'^[a-zA-Z0-9_\s]+$', user_input.strip()))
 
-def validate_integer_range(value: any, min_val: int, max_val: int) -> bool:
-    """Check if input is integer within specified inclusive range."""
-    try:
-        val = int(value)
-        return min_val <= val <= max_val
-    except (ValueError, TypeError):
-        return False
+    @staticmethod
+    def sanitize(user_input: str) -> str:
+        """Strips whitespace and converts to lowercase."""
+        return user_input.strip().lower()
 
-def validate_alphanumeric(text: str) -> bool:
-    """Ensure string contains only letters and numbers."""
-    return text.isalnum()
+def process_main_loop():
+    """Example main loop integration for cli-helper-26."""
+    validator = InputValidator()
+    
+    while True:
+        raw_input = input("cli-helper-26 > ")
+        
+        if raw_input.lower() in ['exit', 'quit']:
+            break
+            
+        if not validator.validate_command(raw_input):
+            print("Error: invalid characters detected in input.")
+            continue
+            
+        clean_data = validator.sanitize(raw_input)
+        print(f"Processing: {clean_data}")
 
-def validate_non_empty(text: str) -> bool:
-    """Ensure string is not empty after stripping whitespace."""
-    return bool(text and text.strip())
+if __name__ == "__main__":
+    process_main_loop()
