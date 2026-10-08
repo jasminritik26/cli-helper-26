@@ -1,38 +1,58 @@
 import os
-import json
+import subprocess
 import sys
-from pathlib import Path
-from typing import Any, Optional
+from typing import Tuple
 
-def load_json(file_path: str) -> dict:
-    """Read and parse a JSON file safely."""
-    path = Path(file_path)
-    if not path.exists():
-        return {}
+
+def format_text(text: str, color: str) -> str:
+    """Formats text with ANSI color codes for terminal output."""
+    colors = {
+        "red": "\033[91m",
+        "green": "\033[92m",
+        "yellow": "\033[93m",
+        "blue": "\033[94m",
+        "bold": "\033[1m",
+        "reset": "\033[0m",
+    }
+    # Disable colors if terminal output is redirected or not a tty
+    if not sys.stdout.isatty() or os.getenv("NO_COLOR"):
+        return text
+
+    color_code = colors.get(color.lower(), "")
+    reset_code = colors["reset"] if color_code else ""
+    return f"{color_code}{text}{reset_code}"
+
+
+def confirm_action(prompt: str, default: bool = False) -> bool:
+    """Prompts the user for a yes/no confirmation in the terminal."""
+    valid = {"yes": True, "y": True, "no": False, "n": False}
+    suffix = " [Y/n]" if default else " [y/N]"
+
+    while True:
+        sys.stdout.write(f"{prompt}{suffix}: ")
+        try:
+            choice = input().lower().strip()
+        except (KeyboardInterrupt, EOFError):
+            sys.stdout.write("\n")
+            return False
+
+        if not choice:
+            return default
+        if choice in valid:
+            return valid[choice]
+        sys.stdout.write("Please respond with 'yes' or 'no' (or 'y' or 'n').\n")
+
+
+def run_command(cmd: str) -> Tuple[int, str, str]:
+    """Executes a system command and returns code, stdout, and stderr."""
     try:
-        with open(path, 'r', encoding='utf-8') as f:
-            return json.load(f)
-    except (json.JSONDecodeError, IOError):
-        return {}
-
-def save_json(data: dict, file_path: str) -> bool:
-    """Write data to a JSON file."""
-    try:
-        with open(file_path, 'w', encoding='utf-8') as f:
-            json.dump(data, f, indent=4)
-        return True
-    except IOError:
-        return False
-
-def ensure_dir(dir_path: str) -> None:
-    """Create directory path if it does not exist."""
-    Path(dir_path).mkdir(parents=True, exist_ok=True)
-
-def get_env_var(key: str, default: Optional[str] = None) -> str:
-    """Retrieve environment variable with fallback."""
-    return os.environ.get(key, default or "")
-
-def exit_with_msg(message: str, code: int = 1) -> None:
-    """Print error and terminate execution."""
-    print(f"Error: {message}", file=sys.stderr)
-    sys.exit(code)
+        result = subprocess.run(
+            cmd,
+            shell=True,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        return result.returncode, result.stdout.strip(), result.stderr.strip()
+    except Exception as e:
+        return -1, "", str(e)
