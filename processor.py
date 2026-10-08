@@ -1,31 +1,38 @@
-from typing import List, Dict, Any, Optional
+import json
+import os
+import shutil
+from typing import Any, Dict, Optional
 
-class DataProcessor:
-    """Handles core data transformation logic for cli-helper-26."""
+def load_json_file(path: str) -> Dict[str, Any]:
+    """Loads and parses a JSON file from disk."""
+    if not os.path.exists(path):
+        return {}
+    with open(path, 'r', encoding='utf-8') as f:
+        return json.load(f)
 
-    def __init__(self, prefix: str = "cli-") -> None:
-        self.prefix: str = prefix
+def save_json_file(path: str, data: Dict[str, Any]) -> None:
+    """Serializes dictionary data to a JSON file."""
+    with open(path, 'w', encoding='utf-8') as f:
+        json.dump(data, f, indent=4)
 
-    def sanitize_input(self, data: List[str]) -> List[str]:
-        """Remove whitespace and filter by internal prefix."""
-        return [item.strip() for item in data if item.startswith(self.prefix)]
+def safe_move(source: str, destination: str) -> bool:
+    """Moves a file to a new location with existence check."""
+    try:
+        if os.path.exists(source):
+            shutil.move(source, destination)
+            return True
+        return False
+    except (IOError, shutil.Error):
+        return False
 
-    def format_output(self, payload: Dict[str, Any]) -> str:
-        """Convert dictionary into a formatted key-value string."""
-        if not payload:
-            return "empty payload"
-        
-        items: List[str] = [f"{k}: {v}" for k, v in payload.items()]
-        return " | ".join(items)
+def format_byte_size(size_bytes: int) -> str:
+    """Converts raw bytes to human readable format."""
+    for unit in ['B', 'KB', 'MB', 'GB']:
+        if size_bytes < 1024.0:
+            return f"{size_bytes:.2f} {unit}"
+        size_bytes /= 1024.0
+    return f"{size_bytes:.2f} TB"
 
-    def process_batch(self, items: List[Dict[str, Any]]) -> List[str]:
-        """Transform a list of dictionaries into formatted strings."""
-        results: List[str] = []
-        for entry in items:
-            processed: str = self.format_output(entry)
-            results.append(processed)
-        return results
-
-def get_instance(namespace: Optional[str] = None) -> DataProcessor:
-    """Factory function to generate processor instance."""
-    return DataProcessor(prefix=namespace or "cli-")
+def get_env_variable(key: str, default: Optional[str] = None) -> str:
+    """Retrieves environment variable or returns default."""
+    return os.environ.get(key, default or "")
