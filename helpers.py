@@ -1,72 +1,46 @@
-"""General utility helpers for formatting and interactive CLI operations."""
+import os
+import sys
+import time
+from contextlib import contextmanager
+from typing import Generator
 
-from typing import Dict, List, Optional
-
-
-def format_header(title: str, width: int = 60, char: str = "=") -> str:
-    """Format a centered title header enclosed in border characters.
-
-    Args:
-        title: The string title to format inside the header.
-        width: Total width of the header line in characters.
-        char: Single character used to construct the border line.
-
-    Returns:
-        A formatted multi-line header string.
-    """
-    border = char * width
-    centered_title = title.center(width - 4)
-    return f"{border}\n{char} {centered_title} {char}\n{border}"
-
+def clean_screen() -> None:
+    """Clears the terminal screen in a cross-platform manner."""
+    os.system('cls' if os.name == 'nt' else 'clear')
 
 def confirm_action(prompt: str, default: bool = False) -> bool:
-    """Prompt the user for a boolean yes/no confirmation.
+    """Prompts the user for a yes/no confirmation.
 
-    Args:
-        prompt: The message displayed to the user.
-        default: Default return value if user presses Enter without typing.
-
-    Returns:
-        True if the user accepted, False otherwise.
+    Returns True for yes, False for no.
     """
-    options = "[Y/n]" if default else "[y/N]"
-    response = input(f"{prompt} {options}: ").strip().lower()
+    valid = {"yes": True, "y": True, "ye": True, "no": False, "n": False}
+    suffix = " [Y/n]" if default else " [y/N]"
 
-    if not response:
-        return default
-    return response in ("y", "yes", "true", "1")
+    while True:
+        sys.stdout.write(f"{prompt}{suffix}: ")
+        choice = input().lower().strip()
+        if not choice:
+            return default
+        if choice in valid:
+            return valid[choice]
+        sys.stdout.write("Please respond with 'yes' or 'no' (or 'y' or 'n').\n")
 
+@contextmanager
+def execution_timer(operation_name: str = "Operation") -> Generator[None, None, None]:
+    """Context manager to measure and print the execution time of a block."""
+    start_time = time.perf_counter()
+    try:
+        yield
+    finally:
+        elapsed = time.perf_counter() - start_time
+        print(f"[{operation_name}] Completed in {elapsed:.4f} seconds.")
 
-def truncate_text(text: str, max_length: int, suffix: str = "...") -> str:
-    """Truncate text to a maximum length and attach a suffix if trimmed.
+def highlight_text(text: str, color_code: str = "32") -> str:
+    """Wraps text in ANSI escape codes for basic terminal coloring.
 
-    Args:
-        text: Target text string to truncate.
-        max_length: Maximum allowed character length including suffix.
-        suffix: Indicator appended to truncated strings.
-
-    Returns:
-        The original or truncated text string.
+    32 = Green, 31 = Red, 33 = Yellow, 34 = Blue, 36 = Cyan.
     """
-    if len(text) <= max_length:
-        return text
-
-    trim_len = max(0, max_length - len(suffix))
-    return text[:trim_len] + suffix
-
-
-def parse_kv_pairs(args: List[str]) -> Dict[str, str]:
-    """Parse a list of key=value command-line strings into a dictionary.
-
-    Args:
-        args: List of raw arguments in 'key=value' format.
-
-    Returns:
-        Dictionary mapping string keys to string values.
-    """
-    result: Dict[str, str] = {}
-    for arg in args:
-        if "=" in arg:
-            key, val = arg.split("=", 1)
-            result[key.strip()] = val.strip()
-    return result
+    if sys.stdout.isatty():
+        esc = chr(27)
+        return f"{esc}[{color_code}m{text}{esc}[0m"
+    return text
