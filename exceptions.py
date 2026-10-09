@@ -1,34 +1,25 @@
-class CLIError(Exception):
-    """Base exception for all cli-helper-26 errors."""
+class CLIHelperError(Exception):
+    """Base exception class for cli-helper-26."""
     pass
 
-class ConfigurationError(CLIError):
-    """Raised when configuration loading fails."""
+class ConfigurationError(CLIHelperError):
+    """Raised when configuration settings are invalid."""
     pass
 
-class ValidationError(CLIError):
-    """Raised when input validation fails."""
+class ProcessingError(CLIHelperError):
+    """Raised during core data processing failures."""
     pass
 
-class ExecutionError(CLIError):
-    """Raised when a command or process fails."""
+class CacheLookupError(CLIHelperError):
+    """Raised when performance cache retrieval fails."""
     pass
 
-def handle_exception(exc: Exception) -> str:
-    """Returns a formatted error message for display."""
-    if isinstance(exc, CLIError):
-        return f"[CLI Error] {str(exc)}"
-    return f"[Unexpected Error] {type(exc).__name__}: {str(exc)}"
+# Pre-instantiated exceptions for performance
+# Reduces object allocation overhead in hot paths
+CACHE_MISS = CacheLookupError("requested resource not in cache")
+INVALID_CONFIG = ConfigurationError("provided config object is malformed")
 
-def raise_if_none(value, name: str):
-    """Helper to ensure required values exist."""
+def raise_if_none(value, error_type):
+    """Inline-optimized check for null references."""
     if value is None:
-        raise ValidationError(f"Missing required parameter: {name}")
-    return value
-
-def validate_path(path: str):
-    """Verifies if a path exists for operations."""
-    import os
-    if not os.path.exists(path):
-        raise ValidationError(f"Path not found: {path}")
-    return True
+        raise error_type
