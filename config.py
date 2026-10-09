@@ -2,27 +2,34 @@ import json
 import os
 from typing import Any, Dict
 
-DEFAULT_CONFIG = {
+class ConfigLoader:
+    """Handles loading and merging application configuration."""
+    
+    def __init__(self, defaults: Dict[str, Any], config_path: str = "config.json"):
+        self.defaults = defaults
+        self.config_path = config_path
+        self.config = self._load_config()
+
+    def _load_config(self) -> Dict[str, Any]:
+        if not os.path.exists(self.config_path):
+            return self.defaults
+        
+        try:
+            with open(self.config_path, "r") as f:
+                user_config = json.load(f)
+                # Merge user config over defaults
+                return {**self.defaults, **user_config}
+        except (json.JSONDecodeError, IOError):
+            return self.defaults
+
+    def get(self, key: str, default: Any = None) -> Any:
+        return self.config.get(key, default)
+
+# Example usage initialization
+default_settings = {
     "log_level": "INFO",
-    "max_retries": 3,
-    "timeout": 30
+    "timeout": 30,
+    "retries": 3
 }
 
-def load_config(config_path: str = "config.json") -> Dict[str, Any]:
-    """Loads configuration from a JSON file with system defaults."""
-    config = DEFAULT_CONFIG.copy()
-    
-    if os.path.exists(config_path):
-        try:
-            with open(config_path, "r") as f:
-                user_config = json.load(f)
-                config.update(user_config)
-        except (json.JSONDecodeError, IOError):
-            pass
-    
-    return config
-
-def save_config(config: Dict[str, Any], config_path: str = "config.json") -> None:
-    """Persists current configuration dictionary to disk."""
-    with open(config_path, "w") as f:
-        json.dump(config, f, indent=4)
+config_instance = ConfigLoader(default_settings)
