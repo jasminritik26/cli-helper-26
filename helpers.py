@@ -1,46 +1,41 @@
-import os
-import sys
-import time
-from contextlib import contextmanager
-from typing import Generator
+from typing import Dict, Any
 
-def clean_screen() -> None:
-    """Clears the terminal screen in a cross-platform manner."""
-    os.system('cls' if os.name == 'nt' else 'clear')
+def flatten_dict(d: Dict[str, Any], parent_key: str = '', sep: str = '.') -> Dict[str, Any]:
+    '''
+    Recursively flattens a nested dictionary.
 
-def confirm_action(prompt: str, default: bool = False) -> bool:
-    """Prompts the user for a yes/no confirmation.
+    Useful for preparing hierarchical data for tabular display or
+    CSV export in command-line interfaces.
+    '''
+    items = []
+    for k, v in d.items():
+        new_key = f'{parent_key}{sep}{k}' if parent_key else k
+        if isinstance(v, dict):
+            items.extend(flatten_dict(v, new_key, sep=sep).items())
+        elif isinstance(v, list):
+            for i, item in enumerate(v):
+                list_key = f'{new_key}{sep}{i}'
+                if isinstance(item, dict):
+                    items.extend(flatten_dict(item, list_key, sep=sep).items())
+                else:
+                    items.append((list_key, item))
+        else:
+            items.append((new_key, v))
+    return dict(items)
 
-    Returns True for yes, False for no.
-    """
-    valid = {"yes": True, "y": True, "ye": True, "no": False, "n": False}
-    suffix = " [Y/n]" if default else " [y/N]"
-
-    while True:
-        sys.stdout.write(f"{prompt}{suffix}: ")
-        choice = input().lower().strip()
-        if not choice:
-            return default
-        if choice in valid:
-            return valid[choice]
-        sys.stdout.write("Please respond with 'yes' or 'no' (or 'y' or 'n').\n")
-
-@contextmanager
-def execution_timer(operation_name: str = "Operation") -> Generator[None, None, None]:
-    """Context manager to measure and print the execution time of a block."""
-    start_time = time.perf_counter()
-    try:
-        yield
-    finally:
-        elapsed = time.perf_counter() - start_time
-        print(f"[{operation_name}] Completed in {elapsed:.4f} seconds.")
-
-def highlight_text(text: str, color_code: str = "32") -> str:
-    """Wraps text in ANSI escape codes for basic terminal coloring.
-
-    32 = Green, 31 = Red, 33 = Yellow, 34 = Blue, 36 = Cyan.
-    """
-    if sys.stdout.isatty():
-        esc = chr(27)
-        return f"{esc}[{color_code}m{text}{esc}[0m"
-    return text
+def clean_dict_values(d: Dict[str, Any], remove_none: bool = True) -> Dict[str, Any]:
+    '''
+    Cleans dictionary values by removing None values and stripping
+    whitespace from string values.
+    '''
+    cleaned = {}
+    for k, v in d.items():
+        if remove_none and v is None:
+            continue
+        if isinstance(v, str):
+            cleaned[k] = v.strip()
+        elif isinstance(v, dict):
+            cleaned[k] = clean_dict_values(v, remove_none)
+        else:
+            cleaned[k] = v
+    return cleaned
