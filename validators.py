@@ -1,34 +1,32 @@
 import re
 
-class InputValidator:
-    """Utility class for processing and validating cli user input."""
-
-    @staticmethod
-    def validate_command(user_input: str) -> bool:
-        """Checks if input matches alphanumeric pattern."""
-        return bool(re.match(r'^[a-zA-Z0-9_\s]+$', user_input.strip()))
-
-    @staticmethod
-    def sanitize(user_input: str) -> str:
-        """Strips whitespace and converts to lowercase."""
-        return user_input.strip().lower()
-
-def process_main_loop():
-    """Example main loop integration for cli-helper-26."""
-    validator = InputValidator()
+def validate_input(user_input: str) -> bool:
+    """
+    Validates that input consists only of alphanumeric characters
+    and meets length requirements.
+    """
+    if not user_input or len(user_input) > 50:
+        return False
     
-    while True:
-        raw_input = input("cli-helper-26 > ")
-        
-        if raw_input.lower() in ['exit', 'quit']:
-            break
-            
-        if not validator.validate_command(raw_input):
-            print("Error: invalid characters detected in input.")
-            continue
-            
-        clean_data = validator.sanitize(raw_input)
-        print(f"Processing: {clean_data}")
+    # Pattern allows only letters and numbers
+    pattern = r'^[a-zA-Z0-9]+$'
+    return bool(re.match(pattern, user_input))
 
-if __name__ == "__main__":
-    process_main_loop()
+def sanitize_input(user_input: str) -> str:
+    """
+    Removes leading/trailing whitespace to clean input.
+    """
+    return user_input.strip()
+
+def get_validated_command(prompt_text: str) -> str:
+    """
+    Interactive loop to retrieve valid user input.
+    """
+    while True:
+        user_data = input(prompt_text)
+        clean_data = sanitize_input(user_data)
+        
+        if validate_input(clean_data):
+            return clean_data
+        
+        print("Invalid input. Please use alphanumeric characters only.")
