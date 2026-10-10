@@ -1,41 +1,57 @@
-from typing import Dict, Any
+from typing import Any, Dict, List, Union
 
-def flatten_dict(d: Dict[str, Any], parent_key: str = '', sep: str = '.') -> Dict[str, Any]:
-    '''
-    Recursively flattens a nested dictionary.
 
-    Useful for preparing hierarchical data for tabular display or
-    CSV export in command-line interfaces.
-    '''
-    items = []
-    for k, v in d.items():
-        new_key = f'{parent_key}{sep}{k}' if parent_key else k
-        if isinstance(v, dict):
-            items.extend(flatten_dict(v, new_key, sep=sep).items())
-        elif isinstance(v, list):
-            for i, item in enumerate(v):
-                list_key = f'{new_key}{sep}{i}'
+def flatten_dict(
+    nested_dict: Dict[str, Any], parent_key: str = "", sep: str = "."
+) -> Dict[str, Any]:
+    """Flatten a nested dictionary into a single-level dictionary with dotted key paths."""
+    items: List[tuple] = []
+    for key, value in nested_dict.items():
+        new_key = f"{parent_key}{sep}{key}" if parent_key else str(key)
+        if isinstance(value, dict):
+            items.extend(flatten_dict(value, new_key, sep=sep).items())
+        elif isinstance(value, list):
+            for idx, item in enumerate(value):
+                list_key = f"{new_key}[{idx}]"
                 if isinstance(item, dict):
                     items.extend(flatten_dict(item, list_key, sep=sep).items())
                 else:
                     items.append((list_key, item))
         else:
-            items.append((new_key, v))
+            items.append((new_key, value))
     return dict(items)
 
-def clean_dict_values(d: Dict[str, Any], remove_none: bool = True) -> Dict[str, Any]:
-    '''
-    Cleans dictionary values by removing None values and stripping
-    whitespace from string values.
-    '''
-    cleaned = {}
-    for k, v in d.items():
-        if remove_none and v is None:
-            continue
-        if isinstance(v, str):
-            cleaned[k] = v.strip()
-        elif isinstance(v, dict):
-            cleaned[k] = clean_dict_values(v, remove_none)
-        else:
-            cleaned[k] = v
-    return cleaned
+
+def filter_empty_values(
+    data: Union[Dict[str, Any], List[Any]]
+) -> Union[Dict[str, Any], List[Any]]:
+    """Recursively remove None values and empty structures from input data."""
+    if isinstance(data, dict):
+        cleaned = {}
+        for k, v in data.items():
+            filtered = filter_empty_values(v) if isinstance(v, (dict, list)) else v
+            if filtered is not None and filtered != "" and filtered != [] and filtered != {}:
+                cleaned[k] = filtered
+        return cleaned
+    elif isinstance(data, list):
+        cleaned_list = []
+        for item in data:
+            filtered = filter_empty_values(item) if isinstance(item, (dict, list)) else item
+            if filtered is not None and filtered != "" and filtered != [] and filtered != {}:
+                cleaned_list.append(filtered)
+        return cleaned_list
+    return data
+
+
+def prepare_data_for_display(
+    data: Dict[str, Any], max_len: int = 40
+) -> Dict[str, str]:
+    """Process structured data into a flat key-value mapping for CLI output."""
+    flat_data = flatten_dict(data)
+    result = {}
+    for key, val in flat_data.items():
+        str_val = str(val) if val is not None else ""
+        if len(str_val) > max_len:
+            str_val = str_val[: max_len - 3] + "..."
+        result[key] = str_val
+    return result
