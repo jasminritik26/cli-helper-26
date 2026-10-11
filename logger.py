@@ -1,47 +1,48 @@
 import logging
-import sys
-from typing import Optional
+from logging.handlers import RotatingFileHandler
+from pathlib import Path
 
-def get_logger(name: str, level: int = logging.INFO) -> logging.Logger:
-    """
-    Configures and returns a logger instance for the application.
 
-    Args:
-        name: The name of the logger instance.
-        level: The logging threshold level.
-
-    Returns:
-        A configured logging.Logger object.
-    """
+def setup_logger(
+    name: str = "cli_helper",
+    log_file: str = "app.log",
+    level: int = logging.INFO,
+    max_bytes: int = 5 * 1024 * 1024,
+    backup_count: int = 3,
+) -> logging.Logger:
+    """Configures and returns a logger with console and rotating file handlers."""
     logger = logging.getLogger(name)
     logger.setLevel(level)
 
-    if not logger.handlers:
-        handler = logging.StreamHandler(sys.stdout)
-        formatter = logging.Formatter(
-            '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-        )
-        handler.setFormatter(formatter)
-        logger.addHandler(handler)
+    # Prevent duplicate handlers if re-initialized
+    if logger.hasHandlers():
+        return logger
+
+    # Ensure destination directory exists
+    log_path = Path(log_file)
+    if log_path.parent and not log_path.parent.exists():
+        log_path.parent.mkdir(parents=True, exist_ok=True)
+
+    formatter = logging.Formatter(
+        fmt="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+    )
+
+    # Console stream output
+    console_handler = logging.StreamHandler()
+    console_handler.setFormatter(formatter)
+    console_handler.setLevel(level)
+    logger.addHandler(console_handler)
+
+    # Rotating log file output
+    file_handler = RotatingFileHandler(
+        filename=log_file,
+        maxBytes=max_bytes,
+        backupCount=backup_count,
+        encoding="utf-8",
+    )
+    file_handler.setFormatter(formatter)
+    file_handler.setLevel(level)
+    logger.addHandler(file_handler)
 
     return logger
-
-def log_message(logger: logging.Logger, message: str, level: str = "info") -> None:
-    """
-    Helper to log messages with dynamic severity levels.
-
-    Args:
-        logger: The logger instance to use.
-        message: The text string to log.
-        level: The severity level as a string.
-    """
-    levels = {
-        "debug": logger.debug,
-        "info": logger.info,
-        "warning": logger.warning,
-        "error": logger.error,
-        "critical": logger.critical
-    }
-
-    log_func = levels.get(level.lower(), logger.info)
-    log_func(message)
