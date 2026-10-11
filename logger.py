@@ -1,38 +1,47 @@
 import logging
-import functools
-from typing import Callable, Any
+import sys
+from typing import Optional
 
-# Configure global logger for cli-helper-26
-logger = logging.getLogger('cli_helper')
-logger.setLevel(logging.INFO)
+def get_logger(name: str, level: int = logging.INFO) -> logging.Logger:
+    """
+    Configures and returns a logger instance for the application.
 
-# Cache for memoized function results to optimize performance
-_cache = {}
+    Args:
+        name: The name of the logger instance.
+        level: The logging threshold level.
 
-def memoize(func: Callable) -> Callable:
-    """Decorator for caching repetitive function results."""
-    @functools.wraps(func)
-    def wrapper(*args: Any, **kwargs: Any) -> Any:
-        key = (func.__name__, args, frozenset(kwargs.items()))
-        if key not in _cache:
-            _cache[key] = func(*args, **kwargs)
-        return _cache[key]
-    return wrapper
+    Returns:
+        A configured logging.Logger object.
+    """
+    logger = logging.getLogger(name)
+    logger.setLevel(level)
 
-def log_performance(func: Callable) -> Callable:
-    """Decorator for tracking execution time of critical functions."""
-    import time
-    @functools.wraps(func)
-    def wrapper(*args: Any, **kwargs: Any) -> Any:
-        start_time = time.perf_counter()
-        result = func(*args, **kwargs)
-        duration = time.perf_counter() - start_time
-        if duration > 0.1:
-            logger.warning(f'Performance bottleneck in {func.__name__}: {duration:.4f}s')
-        return result
-    return wrapper
+    if not logger.handlers:
+        handler = logging.StreamHandler(sys.stdout)
+        formatter = logging.Formatter(
+            '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+        )
+        handler.setFormatter(formatter)
+        logger.addHandler(handler)
 
-def clear_cache() -> None:
-    """Manual cache invalidation for memory management."""
-    _cache.clear()
-    logger.info('Logger cache cleared successfully')
+    return logger
+
+def log_message(logger: logging.Logger, message: str, level: str = "info") -> None:
+    """
+    Helper to log messages with dynamic severity levels.
+
+    Args:
+        logger: The logger instance to use.
+        message: The text string to log.
+        level: The severity level as a string.
+    """
+    levels = {
+        "debug": logger.debug,
+        "info": logger.info,
+        "warning": logger.warning,
+        "error": logger.error,
+        "critical": logger.critical
+    }
+
+    log_func = levels.get(level.lower(), logger.info)
+    log_func(message)
