@@ -1,32 +1,42 @@
-import re
+import logging
+from typing import Any, Optional
 
-def validate_input(user_input: str) -> bool:
-    """
-    Validates that input consists only of alphanumeric characters
-    and meets length requirements.
-    """
-    if not user_input or len(user_input) > 50:
-        return False
+logger = logging.getLogger(__name__)
+
+class ValidationError(Exception):
+    """Custom exception for input validation failures."""
+    pass
+
+def validate_non_empty_string(value: Any, field_name: str) -> str:
+    """Ensures value is a non-empty, stripped string."""
+    if not isinstance(value, str):
+        raise ValidationError(f"{field_name} must be a string, got {type(value).__name__}")
     
-    # Pattern allows only letters and numbers
-    pattern = r'^[a-zA-Z0-9]+$'
-    return bool(re.match(pattern, user_input))
+    sanitized = value.strip()
+    if not sanitized:
+        raise ValidationError(f"{field_name} cannot be empty or whitespace")
+    
+    return sanitized
 
-def sanitize_input(user_input: str) -> str:
-    """
-    Removes leading/trailing whitespace to clean input.
-    """
-    return user_input.strip()
+def validate_integer_range(value: Any, min_val: int, max_val: int) -> int:
+    """Ensures value is within an inclusive integer range."""
+    try:
+        val_int = int(value)
+    except (ValueError, TypeError):
+        raise ValidationError(f"Expected integer, received '{value}'")
+    
+    if not (min_val <= val_int <= max_val):
+        raise ValidationError(f"Value {val_int} out of bounds [{min_val}, {max_val}]")
+    
+    return val_int
 
-def get_validated_command(prompt_text: str) -> str:
-    """
-    Interactive loop to retrieve valid user input.
-    """
-    while True:
-        user_data = input(prompt_text)
-        clean_data = sanitize_input(user_data)
-        
-        if validate_input(clean_data):
-            return clean_data
-        
-        print("Invalid input. Please use alphanumeric characters only.")
+def safe_process_input(func, *args, **kwargs) -> Optional[Any]:
+    """Wrapper to handle validation errors gracefully."""
+    try:
+        return func(*args, **kwargs)
+    except ValidationError as e:
+        logger.error(f"Validation failed: {e}")
+        return None
+    except Exception as e:
+        logger.critical(f"Unexpected system error: {e}", exc_info=True)
+        return None
