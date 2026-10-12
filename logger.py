@@ -1,48 +1,33 @@
 import logging
-from logging.handlers import RotatingFileHandler
-from pathlib import Path
+import sys
+import os
+from typing import Optional
 
-
-def setup_logger(
-    name: str = "cli_helper",
-    log_file: str = "app.log",
-    level: int = logging.INFO,
-    max_bytes: int = 5 * 1024 * 1024,
-    backup_count: int = 3,
-) -> logging.Logger:
-    """Configures and returns a logger with console and rotating file handlers."""
+def setup_logger(name: str, log_file: Optional[str] = None) -> logging.Logger:
+    """Configures a standardized logger with robust error handling."""
     logger = logging.getLogger(name)
-    logger.setLevel(level)
+    logger.setLevel(logging.INFO)
 
-    # Prevent duplicate handlers if re-initialized
-    if logger.hasHandlers():
-        return logger
+    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
-    # Ensure destination directory exists
-    log_path = Path(log_file)
-    if log_path.parent and not log_path.parent.exists():
-        log_path.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        handler = logging.StreamHandler(sys.stdout)
+        handler.setFormatter(formatter)
+        logger.addHandler(handler)
 
-    formatter = logging.Formatter(
-        fmt="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-        datefmt="%Y-%m-%d %H:%M:%S",
-    )
+        if log_file:
+            # Handle edge case: directory permission or path errors
+            log_dir = os.path.dirname(os.path.abspath(log_file))
+            if log_dir and not os.path.exists(log_dir):
+                os.makedirs(log_dir, exist_ok=True)
+            
+            file_handler = logging.FileHandler(log_file)
+            file_handler.setFormatter(formatter)
+            logger.addHandler(file_handler)
 
-    # Console stream output
-    console_handler = logging.StreamHandler()
-    console_handler.setFormatter(formatter)
-    console_handler.setLevel(level)
-    logger.addHandler(console_handler)
-
-    # Rotating log file output
-    file_handler = RotatingFileHandler(
-        filename=log_file,
-        maxBytes=max_bytes,
-        backupCount=backup_count,
-        encoding="utf-8",
-    )
-    file_handler.setFormatter(formatter)
-    file_handler.setLevel(level)
-    logger.addHandler(file_handler)
+    except (OSError, PermissionError) as e:
+        # Fallback to stderr if file logging fails
+        print(f"Critical: Failed to initialize log file at {log_file}: {e}", file=sys.stderr)
+        logger.setLevel(logging.WARNING)
 
     return logger
