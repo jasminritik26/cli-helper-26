@@ -1,35 +1,44 @@
-import sys
-import logging
-from typing import Any, Callable, Optional
+import json
+import os
+from typing import Any, Optional
 
-logging.basicConfig(level=logging.ERROR)
-logger = logging.getLogger('cli-helper-26')
-
-def safe_execute(func: Callable, *args: Any, **kwargs: Any) -> Optional[Any]:
-    """Executes a callable with error handling for edge cases."""
+def load_json_file(filepath: str) -> dict:
+    """Safely load and parse a JSON configuration file."""
+    if not os.path.exists(filepath):
+        return {}
+    
     try:
-        return func(*args, **kwargs)
-    except TypeError as e:
-        logger.error(f"Invalid arguments provided: {e}")
-    except ValueError as e:
-        logger.error(f"Invalid input value: {e}")
-    except PermissionError:
-        logger.error("Insufficient permissions to perform operation")
-    except Exception as e:
-        logger.error(f"Unexpected system error: {str(e)}")
-    return None
+        with open(filepath, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except (json.JSONDecodeError, IOError):
+        return {}
 
-def validate_path(path: Any) -> bool:
-    """Validates input path integrity before usage."""
-    if not isinstance(path, str) or not path.strip():
-        logger.warning("Invalid path format provided")
+def save_json_file(filepath: str, data: dict) -> bool:
+    """Atomic save for dictionary data to JSON."""
+    try:
+        with open(filepath, 'w', encoding='utf-8') as f:
+            json.dump(data, f, indent=4, sort_keys=True)
+        return True
+    except IOError:
         return False
-    return True
 
-def robust_exit(code: int = 0) -> None:
-    """Graceful process termination handler."""
+def get_nested_key(data: dict, keys: list[str], default: Any = None) -> Any:
+    """Retrieve value from nested dictionary safely."""
+    current = data
     try:
-        sys.exit(code)
-    except SystemExit as e:
-        logger.info(f"Process exiting with code {code}")
-        raise e
+        for key in keys:
+            current = current[key]
+        return current
+    except (KeyError, TypeError):
+        return default
+
+def flatten_dict(d: dict, parent_key: str = '', sep: str = '_') -> dict:
+    """Flatten nested dictionaries into single-level mapping."""
+    items = []
+    for k, v in d.items():
+        new_key = f"{parent_key}{sep}{k}" if parent_key else k
+        if isinstance(v, dict):
+            items.extend(flatten_dict(v, new_key, sep=sep).items())
+        else:
+            items.append((new_key, v))
+    return dict(items)
