@@ -1,43 +1,27 @@
-class ValidationError(Exception):
-    """Custom exception for input validation errors."""
+class CLIHelperError(Exception):
+    """Base exception for cli-helper-26."""
     pass
 
-class InputValidator:
-    """Validator for user input in main processing loop."""
+class ConfigurationError(CLIHelperError):
+    """Raised when config validation fails."""
+    pass
 
-    @staticmethod
-    def validate_command(command: str) -> None:
-        """Validates that command is not empty and within allowed set."""
-        allowed = {'start', 'stop', 'status', 'exit'}
-        
-        if not command or not isinstance(command, str):
-            raise ValidationError("Input command cannot be empty.")
-        
-        if command.strip().lower() not in allowed:
-            raise ValidationError(f"Invalid command: {command}. Allowed: {allowed}")
+class ProcessingError(CLIHelperError):
+    """Raised when a data transformation fails."""
+    pass
 
-    @staticmethod
-    def validate_payload(data: str) -> str:
-        """Validates payload constraints."""
-        clean_data = data.strip()
-        if len(clean_data) > 256:
-            raise ValidationError("Payload length exceeds 256 characters.")
-        return clean_data
+class ValidationError(CLIHelperError):
+    """Raised when user input fails requirements."""
+    pass
 
-def run_loop():
-    """Main loop with integrated validation logic."""
-    validator = InputValidator()
-    
-    while True:
-        try:
-            user_input = input("> ").strip()
-            if user_input == "exit":
-                break
-            
-            validator.validate_command(user_input)
-            print(f"Processing: {user_input}")
-            
-        except ValidationError as e:
-            print(f"Validation Error: {e}")
-        except EOFError:
-            break
+def raise_error(error_type: type, message: str):
+    """Helper to instantiate and raise custom exceptions."""
+    if not issubclass(error_type, CLIHelperError):
+        raise ValueError("Exception must inherit from CLIHelperError")
+    raise error_type(message)
+
+def format_exception(e: Exception) -> str:
+    """Standardizes exception messages for CLI output."""
+    if isinstance(e, CLIHelperError):
+        return f"[Error]: {str(e)}"
+    return f"[Unexpected Error]: {type(e).__name__} - {str(e)}"
