@@ -1,36 +1,32 @@
 import logging
 from typing import List, Dict, Any
 
+logger = logging.getLogger(__name__)
+
 class DataProcessor:
-    """Handles raw data cleanup and transformation tasks."""
+    """Handles core data transformation and cleanup logic."""
 
-    def __init__(self, debug: bool = False):
-        self.logger = logging.getLogger(__name__)
-        self.debug = debug
+    def __init__(self, settings: Dict[str, Any]):
+        self.settings = settings
 
-    def clean_records(self, data: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        """Removes empty keys and strips whitespace from string values."""
-        cleaned = []
-        for entry in data:
-            if not isinstance(entry, dict):
-                continue
-            
-            processed = {
-                k: v.strip() if isinstance(v, str) else v 
-                for k, v in entry.items() if v is not None
-            }
-            cleaned.append(processed)
-        return cleaned
+    def sanitize_input(self, data: str) -> str:
+        """Remove whitespace and normalize line endings."""
+        if not isinstance(data, str):
+            return ""
+        return data.strip().replace('\r\n', '\n')
 
-    def reformat_output(self, data: List[Dict[str, Any]]) -> Dict[str, List[Any]]:
-        """Organizes list of records into a structured format."""
-        return {
-            "metadata": {"count": len(data), "status": "processed"},
-            "results": data
-        }
+    def batch_process(self, items: List[str]) -> List[str]:
+        """Process collection and filter invalid entries."""
+        results = []
+        for item in items:
+            sanitized = self.sanitize_input(item)
+            if sanitized:
+                results.append(sanitized)
+        
+        logger.info(f"Processed {len(results)} valid items.")
+        return results
 
-def process_pipeline(raw_data: List[Dict[str, Any]]) -> Dict[str, Any]:
-    """Orchestrator for processor logic."""
-    processor = DataProcessor()
-    cleaned = processor.clean_records(raw_data)
-    return processor.reformat_output(cleaned)
+    def cleanup_resources(self) -> None:
+        """Reset internal state buffers."""
+        self.settings.clear()
+        logger.debug("Processor state cleared.")
