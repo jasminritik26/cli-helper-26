@@ -1,42 +1,32 @@
-import logging
+import re
 from typing import Any, Optional
 
-logger = logging.getLogger(__name__)
+class InputValidator:
+    """Centralized validation logic for cli-helper-26."""
 
-class ValidationError(Exception):
-    """Custom exception for input validation failures."""
-    pass
+    @staticmethod
+    def is_valid_email(email: str) -> bool:
+        """Verify email address format using regex."""
+        pattern = r'^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$'
+        return bool(re.match(pattern, email))
 
-def validate_non_empty_string(value: Any, field_name: str) -> str:
-    """Ensures value is a non-empty, stripped string."""
-    if not isinstance(value, str):
-        raise ValidationError(f"{field_name} must be a string, got {type(value).__name__}")
-    
-    sanitized = value.strip()
-    if not sanitized:
-        raise ValidationError(f"{field_name} cannot be empty or whitespace")
-    
-    return sanitized
+    @staticmethod
+    def is_positive_integer(value: Any) -> bool:
+        """Ensure value is a positive integer string."""
+        try:
+            int_val = int(value)
+            return int_val > 0
+        except (ValueError, TypeError):
+            return False
 
-def validate_integer_range(value: Any, min_val: int, max_val: int) -> int:
-    """Ensures value is within an inclusive integer range."""
-    try:
-        val_int = int(value)
-    except (ValueError, TypeError):
-        raise ValidationError(f"Expected integer, received '{value}'")
-    
-    if not (min_val <= val_int <= max_val):
-        raise ValidationError(f"Value {val_int} out of bounds [{min_val}, {max_val}]")
-    
-    return val_int
+    @staticmethod
+    def validate_length(data: str, min_len: int, max_len: Optional[int] = None) -> bool:
+        """Check if string length is within acceptable bounds."""
+        length = len(data)
+        if max_len is None:
+            return length >= min_len
+        return min_len <= length <= max_len
 
-def safe_process_input(func, *args, **kwargs) -> Optional[Any]:
-    """Wrapper to handle validation errors gracefully."""
-    try:
-        return func(*args, **kwargs)
-    except ValidationError as e:
-        logger.error(f"Validation failed: {e}")
-        return None
-    except Exception as e:
-        logger.critical(f"Unexpected system error: {e}", exc_info=True)
-        return None
+def sanitize_input(user_input: str) -> str:
+    """Strip whitespace and normalize string inputs."""
+    return user_input.strip() if isinstance(user_input, str) else ""
