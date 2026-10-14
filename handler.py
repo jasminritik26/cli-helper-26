@@ -1,56 +1,41 @@
-import json
-from typing import Any, Dict, List, Union
+import sys
 
+def validate_input(user_input):
+    """Checks if input is non-empty and within length limits."""
+    stripped = user_input.strip()
+    if not stripped:
+        return False, "Input cannot be empty."
+    if len(stripped) > 255:
+        return False, "Input exceeds maximum length of 255 characters."
+    return True, stripped
 
-def flatten_dict(data: Dict[str, Any], parent_key: str = '', sep: str = '.') -> Dict[str, Any]:
-    """Recursively flatten a nested dictionary for easier CLI output display.
+def run_processor():
+    """Main processing loop for cli-helper-26 input handling."""
+    print("cli-helper-26 initialized. Type 'exit' to quit.")
+    
+    while True:
+        try:
+            user_input = input("> ")
+            if user_input.lower() == 'exit':
+                print("Exiting...")
+                break
 
-    Args:
-        data: The dictionary to flatten.
-        parent_key: Prefix for nested keys.
-        sep: Separator between key levels.
+            is_valid, result = validate_input(user_input)
+            
+            if not is_valid:
+                print(f"Validation Error: {result}")
+                continue
 
-    Returns:
-        A single-level dictionary with flattened keys.
-    """
-    items: List[tuple] = []
-    for key, value in data.items():
-        new_key = f"{parent_key}{sep}{key}" if parent_key else str(key)
-        if isinstance(value, dict):
-            items.extend(flatten_dict(value, new_key, sep=sep).items())
-        elif isinstance(value, list):
-            for i, elem in enumerate(value):
-                if isinstance(elem, dict):
-                    items.extend(flatten_dict(elem, f"{new_key}[{i}]", sep=sep).items())
-                else:
-                    items.append((f"{new_key}[{i}]", elem))
-        else:
-            items.append((new_key, value))
-    return dict(items)
+            # Processing logic for validated input
+            process_data(result)
 
+        except (KeyboardInterrupt, EOFError):
+            print("\nSession terminated by user.")
+            break
 
-def parse_kv_pairs(pairs: List[str]) -> Dict[str, str]:
-    """Parse list of 'KEY=VALUE' strings passed from CLI flags into a dictionary.
+def process_data(data):
+    """Dummy processing logic for input string."""
+    print(f"Processing: {data}")
 
-    Args:
-        pairs: List of raw CLI key-value strings.
-
-    Returns:
-        Parsed dictionary of key-value pairs.
-    """
-    result = {}
-    for pair in pairs:
-        if '=' in pair:
-            key, val = pair.split('=', 1)
-            result[key.strip()] = val.strip()
-        else:
-            result[pair.strip()] = ""
-    return result
-
-
-def format_as_json(data: Dict[str, Any], indent: int = 2) -> str:
-    """Safely serialize dictionary data to formatted JSON string."""
-    try:
-        return json.dumps(data, indent=indent, default=str)
-    except (TypeError, ValueError) as err:
-        return f"{{\"error\": \"Failed to serialize: {str(err)}\"}}"
+if __name__ == "__main__":
+    run_processor()
