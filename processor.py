@@ -1,35 +1,34 @@
-import logging
-from typing import List, Dict, Any
+import json
+from typing import Any, Dict, Optional
 
-logger = logging.getLogger(__name__)
+def sanitize_data(data: Any) -> Any:
+    """
+    Recursively cleans input data for cli display.
+    Ensures types are compatible with standard streams.
+    """
+    if isinstance(data, dict):
+        return {str(k): sanitize_data(v) for k, v in data.items()}
+    if isinstance(data, list):
+        return [sanitize_data(i) for i in data]
+    if isinstance(data, (int, float, str, bool, type(None))):
+        return data
+    return str(data)
 
-class DataProcessor:
-    """Handles batch processing of CLI input streams."""
+def format_json(data: Any, indent: int = 4) -> str:
+    """
+    Serializes data to a formatted json string.
+    """
+    try:
+        return json.dumps(sanitize_data(data), indent=indent)
+    except (TypeError, ValueError) as e:
+        return f"Error processing data: {e}"
 
-    def __init__(self, settings: Dict[str, Any] = None):
-        self.settings = settings or {}
-
-    def sanitize_input(self, data: List[str]) -> List[str]:
-        """Removes whitespace and filters empty strings."""
-        return [item.strip() for item in data if item and item.strip()]
-
-    def process_batch(self, inputs: List[str]) -> Dict[str, Any]:
-        """
-        Organizes batch inputs into structured execution metadata.
-        """
-        cleaned = self.sanitize_input(inputs)
-        
-        if not cleaned:
-            logger.warning("Empty batch received for processing")
-            return {"status": "empty", "count": 0}
-
-        return {
-            "status": "success",
-            "count": len(cleaned),
-            "items": cleaned
-        }
-
-def run_pipeline(raw_data: List[str]) -> Dict[str, Any]:
-    """Factory function for standard processor execution."""
-    processor = DataProcessor()
-    return processor.process_batch(raw_data)
+def load_json_file(filepath: str) -> Optional[Dict]:
+    """
+    Reads and parses a json configuration file.
+    """
+    try:
+        with open(filepath, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        return None
