@@ -1,33 +1,30 @@
 import logging
-import sys
+from logging.handlers import RotatingFileHandler
 import os
-from typing import Optional
 
-def setup_logger(name: str, log_file: Optional[str] = None) -> logging.Logger:
-    """Configures a standardized logger with robust error handling."""
+def setup_logger(name: str, log_file: str = 'app.log', level: int = logging.INFO) -> logging.Logger:
+    """Configures a rotating file logger for the application."""
     logger = logging.getLogger(name)
-    logger.setLevel(logging.INFO)
+    logger.setLevel(level)
 
-    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    # Prevent duplicate handlers if function is called multiple times
+    if not logger.handlers:
+        # Format: timestamp - logger name - level - message
+        formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
-    try:
-        handler = logging.StreamHandler(sys.stdout)
+        # Rotation: 5MB per file, keeping 3 backup files
+        handler = RotatingFileHandler(
+            log_file, 
+            maxBytes=5*1024*1024, 
+            backupCount=3
+        )
         handler.setFormatter(formatter)
+        
         logger.addHandler(handler)
-
-        if log_file:
-            # Handle edge case: directory permission or path errors
-            log_dir = os.path.dirname(os.path.abspath(log_file))
-            if log_dir and not os.path.exists(log_dir):
-                os.makedirs(log_dir, exist_ok=True)
-            
-            file_handler = logging.FileHandler(log_file)
-            file_handler.setFormatter(formatter)
-            logger.addHandler(file_handler)
-
-    except (OSError, PermissionError) as e:
-        # Fallback to stderr if file logging fails
-        print(f"Critical: Failed to initialize log file at {log_file}: {e}", file=sys.stderr)
-        logger.setLevel(logging.WARNING)
+        
+        # Also output to console for development visibility
+        console_handler = logging.StreamHandler()
+        console_handler.setFormatter(formatter)
+        logger.addHandler(console_handler)
 
     return logger
