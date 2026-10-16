@@ -1,41 +1,38 @@
-import sys
+import functools
+import time
+from typing import Callable, Any, Dict
 
-def validate_input(user_input):
-    """Checks if input is non-empty and within length limits."""
-    stripped = user_input.strip()
-    if not stripped:
-        return False, "Input cannot be empty."
-    if len(stripped) > 255:
-        return False, "Input exceeds maximum length of 255 characters."
-    return True, stripped
+# Cache for expensive operations in core logic
+_result_cache: Dict[tuple, Any] = {}
 
-def run_processor():
-    """Main processing loop for cli-helper-26 input handling."""
-    print("cli-helper-26 initialized. Type 'exit' to quit.")
-    
-    while True:
-        try:
-            user_input = input("> ")
-            if user_input.lower() == 'exit':
-                print("Exiting...")
-                break
+def memoize_request(func: Callable) -> Callable:
+    """Decorator to cache results of expensive calls based on arguments."""
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs) -> Any:
+        key = (func.__name__, args, frozenset(kwargs.items()))
+        if key not in _result_cache:
+            _result_cache[key] = func(*args, **kwargs)
+        return _result_cache[key]
+    return wrapper
 
-            is_valid, result = validate_input(user_input)
-            
-            if not is_valid:
-                print(f"Validation Error: {result}")
-                continue
+class DataHandler:
+    """Optimized handler for core data processing tasks."""
+    def __init__(self, buffer_size: int = 1024):
+        self.buffer_size = buffer_size
 
-            # Processing logic for validated input
-            process_data(result)
+    @memoize_request
+    def process_payload(self, data: bytes) -> Dict[str, Any]:
+        """Simulates a heavy computational task with caching enabled."""
+        time.sleep(0.1)
+        return {
+            "size": len(data),
+            "checksum": hash(data),
+            "timestamp": time.time()
+        }
 
-        except (KeyboardInterrupt, EOFError):
-            print("\nSession terminated by user.")
-            break
-
-def process_data(data):
-    """Dummy processing logic for input string."""
-    print(f"Processing: {data}")
-
-if __name__ == "__main__":
-    run_processor()
+    def batch_process(self, items: list) -> list:
+        """Efficient execution of payload processing for item lists."""
+        results = []
+        for item in items:
+            results.append(self.process_payload(item))
+        return results
