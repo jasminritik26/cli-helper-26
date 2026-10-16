@@ -1,34 +1,53 @@
-import json
-from typing import Any, Dict, Optional
+import logging
+from typing import Any, Dict, List, Optional
 
-def sanitize_data(data: Any) -> Any:
-    """
-    Recursively cleans input data for cli display.
-    Ensures types are compatible with standard streams.
-    """
-    if isinstance(data, dict):
-        return {str(k): sanitize_data(v) for k, v in data.items()}
-    if isinstance(data, list):
-        return [sanitize_data(i) for i in data]
-    if isinstance(data, (int, float, str, bool, type(None))):
-        return data
-    return str(data)
+logger = logging.getLogger(__name__)
 
-def format_json(data: Any, indent: int = 4) -> str:
-    """
-    Serializes data to a formatted json string.
-    """
-    try:
-        return json.dumps(sanitize_data(data), indent=indent)
-    except (TypeError, ValueError) as e:
-        return f"Error processing data: {e}"
 
-def load_json_file(filepath: str) -> Optional[Dict]:
-    """
-    Reads and parses a json configuration file.
-    """
-    try:
-        with open(filepath, 'r', encoding='utf-8') as f:
-            return json.load(f)
-    except (FileNotFoundError, json.JSONDecodeError):
-        return None
+class InputValidationError(Exception):
+    """Custom exception raised when command input validation fails."""
+    pass
+
+
+def validate_payload(data: Any) -> Dict[str, Any]:
+    """Validate raw input data structure before main execution."""
+    if not isinstance(data, dict):
+        raise InputValidationError("Payload must be a key-value dictionary")
+    
+    if "command" not in data or not isinstance(data["command"], str):
+        raise InputValidationError("Payload missing required string field 'command'")
+    
+    data["command"] = data["command"].strip().lower()
+    if not data["command"]:
+        raise InputValidationError("Field 'command' cannot be empty or whitespace")
+    
+    return data
+
+
+def process_batch_loop(items: List[Any]) -> List[Dict[str, Any]]:
+    """Main batch processing loop with inline input validation."""
+    processed_results = []
+    
+    for idx, raw_item in enumerate(items):
+        try:
+            validated = validate_payload(raw_item)
+            cmd = validated["command"]
+            payload = validated.get("data", {})
+            
+            logger.info(f"Processing item {idx}: command='{cmd}'")
+            
+            # Execution logic for valid commands
+            if cmd == "ping":
+                result = {"status": "pong", "details": payload}
+            elif cmd == "format":
+                result = {"formatted": str(payload).upper()}
+            else:
+                raise InputValidationError(f"Unsupported command type: '{cmd}'")
+            
+            processed_results.append({"index": idx, "success": True, "result": result})
+            
+        except InputValidationError as err:
+            logger.warning(f"Validation failed at item {idx}: {err}")
+            processed_results.append({"index": idx, "success": False, "error": str(err)})
+            
+    return processed_results
