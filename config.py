@@ -1,34 +1,41 @@
 import os
-from typing import Dict, Any, Optional
+import logging
+from typing import Any, Optional
 
-class Config:
-    """Handles application configuration loading and management."""
+logger = logging.getLogger(__name__)
 
-    def __init__(self, env_prefix: str = "CLI_") -> None:
-        self.env_prefix: str = env_prefix
-        self._settings: Dict[str, Any] = {}
+class ConfigError(Exception):
+    """Custom exception for configuration failures."""
+    pass
 
-    def load_from_env(self) -> None:
-        """Populates settings from environment variables with matching prefix."""
-        for key, value in os.environ.items():
-            if key.startswith(self.env_prefix):
-                clean_key = key[len(self.env_prefix):].lower()
-                self._settings[clean_key] = value
+def get_env_variable(key: str, default: Optional[str] = None) -> str:
+    """Retrieves environment variable with error checking."""
+    try:
+        value = os.getenv(key, default)
+        if value is None:
+            raise ConfigError(f"Missing required configuration: {key}")
+        return value
+    except Exception as e:
+        logger.error(f"Configuration retrieval failed for {key}: {str(e)}")
+        raise ConfigError(f"Critical failure: {key} is not accessible") from e
 
-    def get(self, key: str, default: Optional[Any] = None) -> Any:
-        """Retrieves a configuration value by key."""
-        return self._settings.get(key, default)
+def load_config_int(key: str, default_val: int) -> int:
+    """Safely parses configuration value to integer."""
+    raw_value = os.getenv(key)
+    if raw_value is None:
+        return default_val
+    try:
+        return int(raw_value)
+    except (ValueError, TypeError) as e:
+        logger.warning(f"Invalid integer format for {key}: {raw_value}. Using default: {default_val}")
+        return default_val
 
-    def set(self, key: str, value: Any) -> None:
-        """Updates a configuration value."""
-        self._settings[key] = value
-
-    def __repr__(self) -> str:
-        return f"Config(keys={list(self._settings.keys())})"
-
-def get_default_config() -> Config:
-    """Factory function for standard config initialization."""
-    config = Config()
-    config.set("debug", False)
-    config.set("version", "1.0.0")
-    return config
+def validate_path(path: str) -> bool:
+    """Validates existence and accessibility of path."""
+    if not path or not os.path.exists(path):
+        logger.error(f"Invalid path provided: {path}")
+        return False
+    if not os.access(path, os.R_OK):
+        logger.error(f"Insufficient read permissions for: {path}")
+        return False
+    return True
