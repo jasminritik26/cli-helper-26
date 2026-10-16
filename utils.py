@@ -1,44 +1,54 @@
-import json
-import os
-from typing import Any, Optional
+"""Utility functions for CLI output formatting, string manipulation, and system interaction."""
 
-def load_json_file(filepath: str) -> dict:
-    """Safely load and parse a JSON configuration file."""
-    if not os.path.exists(filepath):
-        return {}
-    
-    try:
-        with open(filepath, 'r', encoding='utf-8') as f:
-            return json.load(f)
-    except (json.JSONDecodeError, IOError):
-        return {}
+import shutil
+import sys
+from typing import Any, List
 
-def save_json_file(filepath: str, data: dict) -> bool:
-    """Atomic save for dictionary data to JSON."""
-    try:
-        with open(filepath, 'w', encoding='utf-8') as f:
-            json.dump(data, f, indent=4, sort_keys=True)
-        return True
-    except IOError:
-        return False
 
-def get_nested_key(data: dict, keys: list[str], default: Any = None) -> Any:
-    """Retrieve value from nested dictionary safely."""
-    current = data
+def format_table(headers: List[str], rows: List[List[Any]], padding: int = 2) -> str:
+    """Format tabular data into a plain text aligned table."""
+    if not rows:
+        return ""
+
+    all_data = [headers] + [[str(cell) for cell in row] for row in rows]
+    col_widths = [max(len(str(row[i])) for row in all_data) for i in range(len(headers))]
+
+    formatted_rows = []
+    for row in all_data:
+        formatted_cells = [str(cell).ljust(col_widths[i] + padding) for i, cell in enumerate(row)]
+        formatted_rows.append("".join(formatted_cells).rstrip())
+
+    separator = "".join(["-" * width + " " * padding for width in col_widths]).rstrip()
+    formatted_rows.insert(1, separator)
+
+    return "\
+".join(formatted_rows)
+
+
+def get_terminal_width(default: int = 80) -> int:
+    """Retrieve current terminal width safely with fallback."""
     try:
-        for key in keys:
-            current = current[key]
-        return current
-    except (KeyError, TypeError):
+        return shutil.get_terminal_size((default, 24)).columns
+    except (AttributeError, ValueError):
         return default
 
-def flatten_dict(d: dict, parent_key: str = '', sep: str = '_') -> dict:
-    """Flatten nested dictionaries into single-level mapping."""
-    items = []
-    for k, v in d.items():
-        new_key = f"{parent_key}{sep}{k}" if parent_key else k
-        if isinstance(v, dict):
-            items.extend(flatten_dict(v, new_key, sep=sep).items())
-        else:
-            items.append((new_key, v))
-    return dict(items)
+
+def truncate_text(text: str, max_length: int, suffix: str = "...") -> str:
+    """Truncate text to max_length including suffix if exceeded."""
+    if len(text) <= max_length:
+        return text
+
+    cutoff = max_length - len(suffix)
+    return text[:cutoff] + suffix if cutoff > 0 else text[:max_length]
+
+
+def confirm_prompt(message: str, default: bool = False) -> bool:
+    """Prompt user for yes/no confirmation in terminal."""
+    choices = " [Y/n]: " if default else " [y/N]: "
+    sys.stdout.write(message + choices)
+    sys.stdout.flush()
+
+    response = sys.stdin.readline().strip().lower()
+    if not response:
+        return default
+    return response in ("y", "yes")
