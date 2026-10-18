@@ -1,39 +1,42 @@
-import os
 import sys
-from typing import List, Optional
+import argparse
+from typing import Callable, Dict, Any, List, Optional, Tuple
 
-class CLIHandler:
-    def __init__(self, workspace: str = "."):
-        self.workspace = workspace
-        self.files = []
 
-    def scan_directory(self) -> List[str]:
-        """Collects all python files in the target directory."""
-        self.files = [
-            f for f in os.listdir(self.workspace) 
-            if f.endswith(".py")
-        ]
-        return self.files
+class CommandRegistry:
+    """Central registry and execution manager for CLI commands."""
 
-    def cleanup_empty_files(self) -> int:
-        """Removes empty python files from the workspace."""
-        removed_count = 0
-        for filename in self.files:
-            path = os.path.join(self.workspace, filename)
-            if os.path.getsize(path) == 0:
-                os.remove(path)
-                removed_count += 1
-        return removed_count
+    def __init__(self, description: str = "CLI Helper Tool"):
+        self.parser = argparse.ArgumentParser(description=description)
+        self.subparsers = self.parser.add_subparsers(dest="command", help="Available subcommands")
+        self._handlers: Dict[str, Tuple[Callable[..., Any], Any]] = {}
 
-    def run(self) -> None:
-        """Orchestrates scan and cleanup operations."""
-        try:
-            self.scan_directory()
-            count = self.cleanup_empty_files()
-            print(f"Successfully removed {count} empty files.")
-        except OSError as e:
-            print(f"System error during cleanup: {e}", file=sys.stderr)
+    def register(self, name: str, help_text: str = "") -> Callable:
+        """Decorator to register a function as a CLI subcommand."""
+        def decorator(func: Callable) -> Callable:
+            subparser = self.subparsers.add_parser(name, help=help_text)
+            self._handlers[name] = (func, subparser)
+            return func
+        return decorator
 
-if __name__ == "__main__":
-    manager = CLIHandler()
-    manager.run()
+    def add_argument(self, command_name: str, *args: Any, **kwargs: Any) -> None:
+        """Attach an argument to a specific subcommand parser."""
+        if command_name in self._handlers:
+            _, subparser = self._handlers[command_name]
+            subparser.add_argument(*args, **kwargs)
+
+    def execute(self, args: Optional[List[str]] = None) -> Any:
+        """Parse arguments and dispatch execution to the registered command."""
+        parsed_args = self.parser.parse_args(args)
+        if not parsed_args.command:
+            self.parser.print_help()
+            sys.exit(1)
+
+        func, _ = self._handlers[parsed_args.command]
+        arg_dict = vars(parsed_args)
+        arg_dict.pop("command")
+        return func(**arg_dict)
+
+
+# Default engine instance for modular command setup
+engine = CommandRegistry()
