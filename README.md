@@ -1,23 +1,23 @@
 # cli-helper-26
 
-`cli-helper-26` is a lightweight Python utility library designed to streamline the development of command-line interfaces. It provides an abstraction layer over `argparse` and `click`, enabling developers to build robust, user-friendly terminal tools with minimal boilerplate.
+`cli-helper-26` is a lightweight Python utility library designed to streamline the development of robust command-line interfaces. It provides a standardized wrapper for argument parsing, logging, and configuration management to help you build professional tools faster.
 
 ## Features
 
-*   **Smart Argument Parsing:** Automatically generates type-safe flag handling and intuitive help menus with minimal configuration.
-*   **Built-in Color Support:** Integrated formatting utilities to output stylized ANSI text and warning banners to the console.
-*   **Cross-Platform Path Resolution:** Simplifies complex file system operations and cross-OS configuration directory management.
-*   **Execution Hooks:** Simple decorators for setting up pre-command validation and logging without polluting your main business logic.
+*   **Simplified Argument Mapping:** Automatically map CLI flags to typed Python dataclasses to eliminate boilerplate argument parsing code.
+*   **Integrated Logger:** Pre-configured logging system that supports color-coded output levels and seamless file-writing capabilities.
+*   **Auto-generated Help:** Effortlessly generate clean, formatted documentation and usage instructions based on your method annotations.
+*   **Zero-Dependency Core:** Built using only Python standard libraries to ensure high portability and minimal footprint in your projects.
 
 ## Installation
 
-Ensure you have Python 3.8+ installed. You can install the package directly from PyPI:
+Install the package via pip:
 
 ```bash
 pip install cli-helper-26
 ```
 
-If you are contributing to the source code, install in editable mode:
+If you are working from the source repository:
 
 ```bash
 git clone https://github.com/Developer/cli-helper-26.git
@@ -25,29 +25,29 @@ cd cli-helper-26
 pip install -e .
 ```
 
-## Basic Usage
+## Usage
 
-Getting started is as simple as decorating your command function. Below is an example of creating a tool that accepts a mandatory path argument:
+Define your command logic using the `Command` decorator to automatically handle flag extraction and help menus.
 
 ```python
-from cli_helper import Command, printer
+from cli_helper import Command, run
 
-app = Command(name="file-tool", version="1.0.0")
-
-@app.command(help="Print the absolute path of a file")
-def resolve(path: str):
-    import os
-    abs_path = os.path.abspath(path)
-    printer.success(f"Resolved path: {abs_path}")
+@Command
+def process(input_file: str, verbose: bool = False):
+    """Process a file with optional verbose output."""
+    if verbose:
+        print(f"Reading: {input_file}")
+    # Application logic here
+    print("Done.")
 
 if __name__ == "__main__":
-    app.run()
+    run()
 ```
 
-Run the script from your terminal:
+Run your script from the terminal:
 
 ```bash
-python main.py resolve ./my_file.txt
+python main.py --input_file data.csv --verbose
 ```
 
 ## License
