@@ -1,32 +1,27 @@
 import re
-from typing import Any, Optional
 
-class InputValidator:
-    """Centralized validation logic for cli-helper-26."""
+# regex patterns for standard input validation
+EMAIL_PATTERN = r'^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$'
+POSITIVE_INT_PATTERN = r'^\d+$'
 
-    @staticmethod
-    def is_valid_email(email: str) -> bool:
-        """Verify email address format using regex."""
-        pattern = r'^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$'
-        return bool(re.match(pattern, email))
+def validate_email(email: str) -> bool:
+    """checks if email matches standard format"""
+    return bool(re.match(EMAIL_PATTERN, email))
 
-    @staticmethod
-    def is_positive_integer(value: Any) -> bool:
-        """Ensure value is a positive integer string."""
-        try:
-            int_val = int(value)
-            return int_val > 0
-        except (ValueError, TypeError):
-            return False
+def validate_positive_integer(value: str) -> bool:
+    """checks if string represents a non-negative integer"""
+    return bool(re.match(POSITIVE_INT_PATTERN, value))
 
-    @staticmethod
-    def validate_length(data: str, min_len: int, max_len: Optional[int] = None) -> bool:
-        """Check if string length is within acceptable bounds."""
-        length = len(data)
-        if max_len is None:
-            return length >= min_len
-        return min_len <= length <= max_len
+def get_validated_input(prompt: str, validator_func) -> str:
+    """loops until valid input is provided by user"""
+    while True:
+        user_input = input(prompt).strip()
+        if validator_func(user_input):
+            return user_input
+        print("Invalid input. Please try again.")
 
-def sanitize_input(user_input: str) -> str:
-    """Strip whitespace and normalize string inputs."""
-    return user_input.strip() if isinstance(user_input, str) else ""
+if __name__ == '__main__':
+    # usage in main processing loop
+    email = get_validated_input("Enter your email: ", validate_email)
+    age = get_validated_input("Enter your age: ", validate_positive_integer)
+    print(f"Captured: {email}, {age}")
