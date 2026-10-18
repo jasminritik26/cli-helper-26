@@ -1,33 +1,50 @@
+import sys
+import functools
+from typing import Callable, Any, Optional
+
+
 class CLIError(Exception):
-    """Base exception for cli-helper-26."""
-    pass
+    """Base exception class for CLI helper errors."""
+    def __init__(self, message: str, exit_code: int = 1):
+        super().__init__(message)
+        self.message = message
+        self.exit_code = exit_code
 
-class ConfigurationError(CLIError):
-    """Raised when configuration files are missing or malformed."""
-    pass
 
-class ValidationError(CLIError):
-    """Raised when input parameters fail validation."""
-    pass
+class CommandNotFoundError(CLIError):
+    """Raised when a requested CLI command is not recognized."""
+    def __init__(self, command: str):
+        super().__init__(f"Unknown command '{command}'. Use --help to list commands.", exit_code=2)
 
-class ProcessingError(CLIError):
-    """Raised when the core logic encounters an internal state failure."""
-    pass
 
-def handle_exception(e: Exception) -> None:
-    """Standardized logging and exit handling for library exceptions."""
-    if isinstance(e, CLIError):
-        print(f"[ERROR] {e.__class__.__name__}: {str(e)}")
-    else:
-        print(f"[CRITICAL] Unexpected error: {str(e)}")
+class InvalidArgumentError(CLIError):
+    """Raised when command arguments fail validation or format checks."""
+    def __init__(self, arg_name: str, reason: str):
+        super().__init__(f"Invalid value for '{arg_name}': {reason}", exit_code=2)
 
-def safe_execute(func, *args, **kwargs):
-    """Decorator pattern helper for wrapped execution blocks."""
-    try:
-        return func(*args, **kwargs)
-    except CLIError as e:
-        handle_exception(e)
-        return None
-    except Exception as e:
-        handle_exception(e)
-        raise
+
+class SystemExecutionError(CLIError):
+    """Raised when an underlying system subprocess fails unexpectedly."""
+    def __init__(self, process_name: str, stderr: Optional[str] = None):
+        msg = f"Subprocess '{process_name}' execution failed."
+        if stderr:
+            msg += f" Details: {stderr.strip()}"
+        super().__init__(msg, exit_code=3)
+
+
+def safe_cli_execution(func: Callable[..., Any]) -> Callable[..., Any]:
+    """Decorator catching unhandled exceptions and routing CLI exit codes."""
+    @functools.wraps(func)
+    def wrapper(*args: Any, **kwargs: Any) -> Any:
+        try:
+            return func(*args, **kwargs)
+        except CLIError as err:
+            print(f"Error: {err.message}", file=sys.stderr)
+            sys.exit(err.exit_code)
+        except KeyboardInterrupt:
+            print("\nOperation aborted by user.", file=sys.stderr)
+            sys.exit(130)
+        except Exception as err:
+            print(f"Fatal internal error: {str(err)}", file=sys.stderr)
+            sys.exit(1)
+    return wrapper
