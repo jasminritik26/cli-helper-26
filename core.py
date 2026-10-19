@@ -1,42 +1,41 @@
-import sys
-import argparse
-from typing import Callable, Dict, Any, List, Optional, Tuple
+import functools
+import concurrent.futures
+from typing import List, Tuple, Any
 
 
-class CommandRegistry:
-    """Central registry and execution manager for CLI commands."""
+class CoreEngine:
+    """Core execution engine with cached lookup and parallel processing."""
 
-    def __init__(self, description: str = "CLI Helper Tool"):
-        self.parser = argparse.ArgumentParser(description=description)
-        self.subparsers = self.parser.add_subparsers(dest="command", help="Available subcommands")
-        self._handlers: Dict[str, Tuple[Callable[..., Any], Any]] = {}
+    def __init__(self, max_workers: int = 4, cache_size: int = 128) -> None:
+        self.max_workers = max_workers
+        # Wrap internal compute method with LRU cache to optimize repeat lookups
+        self._cached_compute = functools.lru_cache(maxsize=cache_size)(self._compute)
 
-    def register(self, name: str, help_text: str = "") -> Callable:
-        """Decorator to register a function as a CLI subcommand."""
-        def decorator(func: Callable) -> Callable:
-            subparser = self.subparsers.add_parser(name, help=help_text)
-            self._handlers[name] = (func, subparser)
-            return func
-        return decorator
+    @staticmethod
+    def _compute(task_name: str, payload_tuple: Tuple[Any, ...]) -> str:
+        """Simulate core task computation and string transformation."""
+        formatted = [str(item).strip().lower() for item in payload_tuple]
+        return f"[{task_name.upper()}] -> {':'.join(formatted)}"
 
-    def add_argument(self, command_name: str, *args: Any, **kwargs: Any) -> None:
-        """Attach an argument to a specific subcommand parser."""
-        if command_name in self._handlers:
-            _, subparser = self._handlers[command_name]
-            subparser.add_argument(*args, **kwargs)
+    def run_task(self, task_name: str, *payload: Any) -> str:
+        """Executes a single task utilizing internal memoization."""
+        return self._cached_compute(task_name, payload)
 
-    def execute(self, args: Optional[List[str]] = None) -> Any:
-        """Parse arguments and dispatch execution to the registered command."""
-        parsed_args = self.parser.parse_args(args)
-        if not parsed_args.command:
-            self.parser.print_help()
-            sys.exit(1)
+    def run_batch(self, task_list: List[Tuple[str, Tuple[Any, ...]]]) -> List[str]:
+        """Executes a batch of core tasks concurrently using thread workers."""
+        with concurrent.futures.ThreadPoolExecutor(max_workers=self.max_workers) as executor:
+            futures = [
+                executor.submit(self.run_task, task_name, *args)
+                for task_name, args in task_list
+            ]
+            return [f.result() for f in concurrent.futures.as_completed(futures)]
 
-        func, _ = self._handlers[parsed_args.command]
-        arg_dict = vars(parsed_args)
-        arg_dict.pop("command")
-        return func(**arg_dict)
-
-
-# Default engine instance for modular command setup
-engine = CommandRegistry()
+    def get_cache_info(self) -> dict:
+        """Returns LRU cache statistics for performance monitoring."""
+        info = self._cached_compute.cache_info()
+        return {
+            "hits": info.hits,
+            "misses": info.misses,
+            "maxsize": info.maxsize,
+            "currsize": info.currsize,
+        }
