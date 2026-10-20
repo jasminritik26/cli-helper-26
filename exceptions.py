@@ -1,28 +1,26 @@
 class CLIHelperError(Exception):
-    """Base exception for cli-helper-26."""
+    """Base exception for all cli-helper-26 errors."""
     pass
 
-class DataProcessingError(CLIHelperError):
-    """Raised when data transformation fails."""
+class ConfigurationError(CLIHelperError):
+    """Raised when configuration loading or parsing fails."""
     pass
 
 class ValidationError(CLIHelperError):
-    """Raised when input data fails validation."""
+    """Raised when input validation fails."""
     pass
 
-def validate_data(data, schema_keys):
-    """Utility to check if data contains required keys."""
-    if not isinstance(data, dict):
-        raise ValidationError("Data must be a dictionary")
-    
-    missing = [key for key in schema_keys if key not in data]
-    if missing:
-        raise ValidationError(f"Missing required keys: {', '.join(missing)}")
-    return True
+class ProcessingError(CLIHelperError):
+    """Raised during core logic execution failures."""
+    pass
 
-def safe_get(data, key, default=None):
-    """Safely retrieve values from nested dictionaries."""
-    try:
-        return data.get(key, default)
-    except AttributeError:
-        raise DataProcessingError(f"Invalid data structure for key access: {key}")
+class ResourceNotFoundError(CLIHelperError):
+    """Raised when a requested resource is missing."""
+    pass
+
+def handle_exception(e: Exception) -> None:
+    """Standardized exception formatting for the CLI."""
+    if isinstance(e, CLIHelperError):
+        print(f"[ERROR] {e.__class__.__name__}: {str(e)}")
+    else:
+        print(f"[CRITICAL] An unexpected error occurred: {str(e)}")
