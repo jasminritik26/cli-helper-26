@@ -1,26 +1,29 @@
 class CLIHelperError(Exception):
-    """Base exception for all cli-helper-26 errors."""
+    """Base exception for the cli-helper-26 project."""
     pass
 
 class ConfigurationError(CLIHelperError):
-    """Raised when configuration loading or parsing fails."""
+    """Raised when config files are missing or malformed."""
     pass
 
-class ValidationError(CLIHelperError):
-    """Raised when input validation fails."""
+class InputValidationError(CLIHelperError):
+    """Raised when user input fails required schema checks."""
     pass
 
 class ProcessingError(CLIHelperError):
-    """Raised during core logic execution failures."""
+    """Raised when core logic execution fails."""
     pass
 
-class ResourceNotFoundError(CLIHelperError):
-    """Raised when a requested resource is missing."""
-    pass
-
-def handle_exception(e: Exception) -> None:
-    """Standardized exception formatting for the CLI."""
-    if isinstance(e, CLIHelperError):
-        print(f"[ERROR] {e.__class__.__name__}: {str(e)}")
+def handle_cli_error(err: Exception) -> None:
+    """Centralized error reporting for runtime exceptions."""
+    if isinstance(err, CLIHelperError):
+        print(f"[CLI Error] {err}")
     else:
-        print(f"[CRITICAL] An unexpected error occurred: {str(e)}")
+        print(f"[Unexpected Error] {type(err).__name__}: {err}")
+
+# Usage pattern:
+# try:
+#     # logic here
+# except Exception as e:
+#     handle_cli_error(e)
+#     exit(1)
