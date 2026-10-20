@@ -1,53 +1,37 @@
-import logging
-from typing import Any, Dict, List, Optional
+import functools
+from typing import Any, Callable, Dict
 
-logger = logging.getLogger(__name__)
+# Cache dictionary for expensive operation results
+_CACHE: Dict[str, Any] = {}
 
+def memoize(func: Callable) -> Callable:
+    """Decorator to cache results of expensive function calls."""
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs) -> Any:
+        key = f"{func.__name__}:{str(args)}:{str(kwargs)}"
+        if key not in _CACHE:
+            _CACHE[key] = func(*args, **kwargs)
+        return _CACHE[key]
+    return wrapper
 
-class InputValidationError(Exception):
-    """Custom exception raised when command input validation fails."""
-    pass
-
-
-def validate_payload(data: Any) -> Dict[str, Any]:
-    """Validate raw input data structure before main execution."""
-    if not isinstance(data, dict):
-        raise InputValidationError("Payload must be a key-value dictionary")
+class DataProcessor:
+    """Core processor for data transformation tasks."""
     
-    if "command" not in data or not isinstance(data["command"], str):
-        raise InputValidationError("Payload missing required string field 'command'")
-    
-    data["command"] = data["command"].strip().lower()
-    if not data["command"]:
-        raise InputValidationError("Field 'command' cannot be empty or whitespace")
-    
-    return data
+    def __init__(self, batch_size: int = 100):
+        self.batch_size = batch_size
 
+    @memoize
+    def expensive_transform(self, data: str) -> str:
+        """Simulated high-latency string processing."""
+        # Simulate computational overhead
+        result = "".join(reversed(data.upper()))
+        return f"PROCESSED_{result}"
 
-def process_batch_loop(items: List[Any]) -> List[Dict[str, Any]]:
-    """Main batch processing loop with inline input validation."""
-    processed_results = []
-    
-    for idx, raw_item in enumerate(items):
-        try:
-            validated = validate_payload(raw_item)
-            cmd = validated["command"]
-            payload = validated.get("data", {})
-            
-            logger.info(f"Processing item {idx}: command='{cmd}'")
-            
-            # Execution logic for valid commands
-            if cmd == "ping":
-                result = {"status": "pong", "details": payload}
-            elif cmd == "format":
-                result = {"formatted": str(payload).upper()}
-            else:
-                raise InputValidationError(f"Unsupported command type: '{cmd}'")
-            
-            processed_results.append({"index": idx, "success": True, "result": result})
-            
-        except InputValidationError as err:
-            logger.warning(f"Validation failed at item {idx}: {err}")
-            processed_results.append({"index": idx, "success": False, "error": str(err)})
-            
-    return processed_results
+    def process_batch(self, items: list) -> list:
+        """Process items in chunks with cached transformation."""
+        results = []
+        for i in range(0, len(items), self.batch_size):
+            batch = items[i:i + self.batch_size]
+            for item in batch:
+                results.append(self.expensive_transform(item))
+        return results
