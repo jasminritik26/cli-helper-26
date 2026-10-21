@@ -1,28 +1,31 @@
-import os
-from pathlib import Path
+import re
+from typing import Dict, Any, Union
 
-# Application path configurations
-BASE_DIR = Path(__file__).resolve().parent
-DEFAULT_LOG_DIR = BASE_DIR / "logs"
+# Configuration constants for cli-helper-26
+DEFAULT_ENCODING: str = 'utf-8'
+LOG_LEVEL: str = 'INFO'
 
-# CLI environment constraints
-MAX_RETRIES = 3
-DEFAULT_TIMEOUT = 30
-SUPPORTED_EXTENSIONS = {'.json', '.yaml', '.yml', '.csv'}
+# Regex pattern for basic data sanitization
+SANITIZATION_PATTERN = re.compile(r'[^a-zA-Z0-9_\-\s]')
 
-# System environment variables
-APP_NAME = "cli-helper-26"
-DEBUG_MODE = os.getenv("DEBUG", "false").lower() == "true"
+def sanitize_input(data: str) -> str:
+    """Removes restricted characters from input strings."""
+    return SANITIZATION_PATTERN.sub('', data).strip()
 
-# Display configuration
-TERMINAL_WIDTH = 80
-COLOR_SCHEME = {
-    "info": "cyan",
-    "error": "red",
-    "success": "green",
-    "warning": "yellow"
-}
+def format_data_dict(data: Dict[str, Any]) -> Dict[str, str]:
+    """Converts all dictionary values to sanitized strings."""
+    return {str(k): sanitize_input(str(v)) for k, v in data.items()}
 
-# Operation limits
-BATCH_SIZE = 100
-CHUNK_SIZE = 4096
+# Data handling status codes
+STATUS_SUCCESS: int = 200
+STATUS_ERROR: int = 500
+STATUS_INVALID: int = 400
+
+def get_status_message(code: int) -> str:
+    """Maps integer status codes to descriptive messages."""
+    messages = {
+        200: "Operation completed successfully",
+        500: "Internal server processing error",
+        400: "Invalid data input provided"
+    }
+    return messages.get(code, "Unknown status code")
