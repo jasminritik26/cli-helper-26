@@ -1,38 +1,40 @@
-import functools
-import time
-from typing import Callable, Any, Dict
+import sys
 
-# Cache for expensive operations in core logic
-_result_cache: Dict[tuple, Any] = {}
+def validate_input(user_input):
+    """Ensures user input is non-empty and within length constraints."""
+    stripped = user_input.strip()
+    if not stripped:
+        return False, "Input cannot be empty."
+    if len(stripped) > 100:
+        return False, "Input exceeds maximum character limit of 100."
+    return True, stripped
 
-def memoize_request(func: Callable) -> Callable:
-    """Decorator to cache results of expensive calls based on arguments."""
-    @functools.wraps(func)
-    def wrapper(*args, **kwargs) -> Any:
-        key = (func.__name__, args, frozenset(kwargs.items()))
-        if key not in _result_cache:
-            _result_cache[key] = func(*args, **kwargs)
-        return _result_cache[key]
-    return wrapper
+def process_command(cmd):
+    """Executes business logic for valid commands."""
+    print(f"Processing: {cmd}")
 
-class DataHandler:
-    """Optimized handler for core data processing tasks."""
-    def __init__(self, buffer_size: int = 1024):
-        self.buffer_size = buffer_size
+def run_main_loop():
+    """Main entry point for command processing with validation."""
+    print("CLI-Helper-26 initialized. Type 'exit' to quit.")
+    
+    while True:
+        try:
+            user_raw = input("> ")
+            if user_raw.lower() == 'exit':
+                break
+            
+            is_valid, result = validate_input(user_raw)
+            
+            if not is_valid:
+                print(f"Validation error: {result}")
+                continue
+            
+            process_command(result)
+            
+        except (EOFError, KeyboardInterrupt):
+            break
+        except Exception as e:
+            print(f"Unexpected system error: {e}")
 
-    @memoize_request
-    def process_payload(self, data: bytes) -> Dict[str, Any]:
-        """Simulates a heavy computational task with caching enabled."""
-        time.sleep(0.1)
-        return {
-            "size": len(data),
-            "checksum": hash(data),
-            "timestamp": time.time()
-        }
-
-    def batch_process(self, items: list) -> list:
-        """Efficient execution of payload processing for item lists."""
-        results = []
-        for item in items:
-            results.append(self.process_payload(item))
-        return results
+if __name__ == '__main__':
+    run_main_loop()
