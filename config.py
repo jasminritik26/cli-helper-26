@@ -1,41 +1,45 @@
+import json
 import os
-import logging
-from typing import Any, Optional
+from pathlib import Path
+from typing import Any, Dict, Optional
 
-logger = logging.getLogger(__name__)
+DEFAULT_CONFIG: Dict[str, Any] = {
+    "app_name": "cli-helper",
+    "version": "0.1.0",
+    "debug": False,
+    "log_level": "INFO",
+    "timeout": 30,
+    "output_format": "json",
+}
 
-class ConfigError(Exception):
-    """Custom exception for configuration failures."""
-    pass
 
-def get_env_variable(key: str, default: Optional[str] = None) -> str:
-    """Retrieves environment variable with error checking."""
-    try:
-        value = os.getenv(key, default)
-        if value is None:
-            raise ConfigError(f"Missing required configuration: {key}")
-        return value
-    except Exception as e:
-        logger.error(f"Configuration retrieval failed for {key}: {str(e)}")
-        raise ConfigError(f"Critical failure: {key} is not accessible") from e
+class ConfigLoader:
+    """Loads and manages application configuration with default fallback values."""
 
-def load_config_int(key: str, default_val: int) -> int:
-    """Safely parses configuration value to integer."""
-    raw_value = os.getenv(key)
-    if raw_value is None:
-        return default_val
-    try:
-        return int(raw_value)
-    except (ValueError, TypeError) as e:
-        logger.warning(f"Invalid integer format for {key}: {raw_value}. Using default: {default_val}")
-        return default_val
+    def __init__(self, config_path: Optional[str] = None):
+        self._config: Dict[str, Any] = DEFAULT_CONFIG.copy()
+        if config_path:
+            self.load_file(config_path)
 
-def validate_path(path: str) -> bool:
-    """Validates existence and accessibility of path."""
-    if not path or not os.path.exists(path):
-        logger.error(f"Invalid path provided: {path}")
-        return False
-    if not os.access(path, os.R_OK):
-        logger.error(f"Insufficient read permissions for: {path}")
-        return False
-    return True
+    def load_file(self, filepath: str) -> None:
+        """Load configuration settings from a JSON file."""
+        path = Path(filepath)
+        if not path.is_file():
+            raise FileNotFoundError(f"Config file not found: {filepath}")
+
+        with open(path, "r", encoding="utf-8") as f:
+            user_config = json.load(f)
+            if isinstance(user_config, dict):
+                self._config.update(user_config)
+
+    def get(self, key: str, default: Any = None) -> Any:
+        """Retrieve a configuration value by key."""
+        return self._config.get(key, default)
+
+    def set(self, key: str, value: Any) -> None:
+        """Set or override a configuration key."""
+        self._config[key] = value
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Return the active configuration dictionary."""
+        return self._config.copy()
