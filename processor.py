@@ -1,37 +1,40 @@
-import functools
-from typing import Any, Callable, Dict
+import json
+import os
+from datetime import datetime
+from typing import Any, Dict, Optional
 
-# Cache dictionary for expensive operation results
-_CACHE: Dict[str, Any] = {}
+def load_json(filepath: str) -> Dict[str, Any]:
+    """Reads and parses a JSON file from disk."""
+    if not os.path.exists(filepath):
+        return {}
+    with open(filepath, 'r') as f:
+        return json.load(f)
 
-def memoize(func: Callable) -> Callable:
-    """Decorator to cache results of expensive function calls."""
-    @functools.wraps(func)
-    def wrapper(*args, **kwargs) -> Any:
-        key = f"{func.__name__}:{str(args)}:{str(kwargs)}"
-        if key not in _CACHE:
-            _CACHE[key] = func(*args, **kwargs)
-        return _CACHE[key]
-    return wrapper
+def save_json(filepath: str, data: Dict[str, Any]) -> None:
+    """Serializes data to a JSON file with indentation."""
+    with open(filepath, 'w') as f:
+        json.dump(data, f, indent=4)
+
+def get_timestamp() -> str:
+    """Generates an ISO format timestamp string."""
+    return datetime.now().isoformat()
+
+def safe_get(data: Dict[str, Any], key: str, default: Any = None) -> Any:
+    """Retrieves a dictionary value with a fallback."""
+    return data.get(key, default)
+
+def format_byte_size(size_bytes: int) -> str:
+    """Converts integer bytes to human-readable string."""
+    for unit in ['B', 'KB', 'MB', 'GB']:
+        if size_bytes < 1024:
+            return f"{size_bytes:.2f} {unit}"
+        size_bytes /= 1024
+    return f"{size_bytes:.2f} TB"
 
 class DataProcessor:
-    """Core processor for data transformation tasks."""
-    
-    def __init__(self, batch_size: int = 100):
-        self.batch_size = batch_size
+    def __init__(self, settings: Optional[Dict] = None):
+        self.settings = settings or {}
 
-    @memoize
-    def expensive_transform(self, data: str) -> str:
-        """Simulated high-latency string processing."""
-        # Simulate computational overhead
-        result = "".join(reversed(data.upper()))
-        return f"PROCESSED_{result}"
-
-    def process_batch(self, items: list) -> list:
-        """Process items in chunks with cached transformation."""
-        results = []
-        for i in range(0, len(items), self.batch_size):
-            batch = items[i:i + self.batch_size]
-            for item in batch:
-                results.append(self.expensive_transform(item))
-        return results
+    def validate_keys(self, data: Dict, required: list) -> bool:
+        """Checks if all required keys exist in dictionary."""
+        return all(key in data for key in required)
