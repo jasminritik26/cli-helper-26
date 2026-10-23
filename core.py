@@ -1,36 +1,42 @@
 import functools
-import time
-from typing import Any, Callable, Dict
+import re
+from typing import Any, Callable, Dict, Optional, Tuple
 
-# Cache for performance optimization of expensive operations
-_memoization_cache: Dict[tuple, Any] = {}
 
-def memoize(func: Callable) -> Callable:
-    """Decorator to cache function results based on arguments."""
-    @functools.wraps(func)
-    def wrapper(*args: Any, **kwargs: Any) -> Any:
-        key = (func.__name__, args, frozenset(kwargs.items()))
-        if key not in _memoization_cache:
-            _memoization_cache[key] = func(*args, **kwargs)
-        return _memoization_cache[key]
-    return wrapper
+class CommandRunner:
+    """Core command runner with argument caching and pre-compiled regex pattern matching."""
 
-@memoize
-def heavy_computation(data_id: int) -> str:
-    """Simulated intensive task with memoization applied."""
-    time.sleep(1)
-    return f"processed_data_{data_id}"
-
-class DataProcessor:
-    """Optimized processor for handling large data sets."""
     def __init__(self) -> None:
-        self._results = {}
+        self._registry: Dict[str, Callable[..., Any]] = {}
+        # Pre-compile argument parsing pattern for speed across repeated executions
+        self._arg_pattern = re.compile(r'(?:[^\s"]|"[^"]*")+')
 
-    def process_batch(self, items: list) -> list:
-        """Batch processing utilizing local dictionary lookup."""
-        return [self._process_single(i) for i in items]
+    def register(self, name: str, func: Callable[..., Any]) -> None:
+        """Register a named command handler."""
+        self._registry[name] = func
 
-    def _process_single(self, item: Any) -> Any:
-        if item not in self._results:
-            self._results[item] = item * 2
-        return self._results[item]
+    @functools.lru_cache(maxsize=512)
+    def parse_args(self, raw_input: str) -> Tuple[str, ...]:
+        """Parse and sanitize CLI input with LRU caching for frequent commands."""
+        cleaned = raw_input.strip()
+        if not cleaned:
+            return ()
+        matches = self._arg_pattern.findall(cleaned)
+        return tuple(match.strip('"') for match in matches)
+
+    def execute(self, raw_input: str) -> Optional[Any]:
+        """Fast-path execution of commands from cached input tokens."""
+        tokens = self.parse_args(raw_input)
+        if not tokens:
+            return None
+
+        cmd_name, *args = tokens
+        handler = self._registry.get(cmd_name)
+        if not handler:
+            raise ValueError(f"Unknown command: {cmd_name}")
+
+        return handler(*args)
+
+    def clear_cache(self) -> None:
+        """Purge argument parsing cache."""
+        self.parse_args.cache_clear()
