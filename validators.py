@@ -1,27 +1,26 @@
 import re
+import ipaddress
 
-# regex patterns for standard input validation
-EMAIL_PATTERN = r'^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$'
-POSITIVE_INT_PATTERN = r'^\d+$'
+def is_valid_email(email: str) -> bool:
+    """Validate email address format using regex."""
+    pattern = r'^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$"
+    return bool(re.match(pattern, email))
 
-def validate_email(email: str) -> bool:
-    """checks if email matches standard format"""
-    return bool(re.match(EMAIL_PATTERN, email))
+def is_valid_ipv4(ip: str) -> bool:
+    """Validate string is a valid IPv4 address."""
+    try:
+        return ipaddress.ip_address(ip).version == 4
+    except ValueError:
+        return False
 
-def validate_positive_integer(value: str) -> bool:
-    """checks if string represents a non-negative integer"""
-    return bool(re.match(POSITIVE_INT_PATTERN, value))
+def is_alphanumeric_with_underscores(value: str) -> bool:
+    """Check if string contains only alphanumeric characters or underscores."""
+    return bool(re.match(r'^[a-zA-Z0-9_]+$', value))
 
-def get_validated_input(prompt: str, validator_func) -> str:
-    """loops until valid input is provided by user"""
-    while True:
-        user_input = input(prompt).strip()
-        if validator_func(user_input):
-            return user_input
-        print("Invalid input. Please try again.")
+def validate_range(value: int, min_val: int, max_val: int) -> bool:
+    """Ensure integer falls within inclusive range."""
+    return min_val <= value <= max_val
 
-if __name__ == '__main__':
-    # usage in main processing loop
-    email = get_validated_input("Enter your email: ", validate_email)
-    age = get_validated_input("Enter your age: ", validate_positive_integer)
-    print(f"Captured: {email}, {age}")
+def is_non_empty_string(value: Any) -> bool:
+    """Check if input is a non-empty string."""
+    return isinstance(value, str) and len(value.strip()) > 0
