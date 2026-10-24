@@ -1,45 +1,35 @@
 import json
 import os
-from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
-DEFAULT_CONFIG: Dict[str, Any] = {
-    "app_name": "cli-helper",
-    "version": "0.1.0",
-    "debug": False,
+DEFAULT_CONFIG = {
     "log_level": "INFO",
-    "timeout": 30,
-    "output_format": "json",
+    "max_retries": 3,
+    "timeout": 30
 }
 
+def load_config(config_path: str = "config.json") -> Dict[str, Any]:
+    """
+    Loads configuration from a JSON file with fallbacks to defaults.
+    """
+    config = DEFAULT_CONFIG.copy()
 
-class ConfigLoader:
-    """Loads and manages application configuration with default fallback values."""
+    if os.path.exists(config_path):
+        try:
+            with open(config_path, "r") as f:
+                user_config = json.load(f)
+                config.update(user_config)
+        except (json.JSONDecodeError, IOError) as e:
+            print(f"Warning: Could not load config {config_path}: {e}")
+            
+    return config
 
-    def __init__(self, config_path: Optional[str] = None):
-        self._config: Dict[str, Any] = DEFAULT_CONFIG.copy()
-        if config_path:
-            self.load_file(config_path)
-
-    def load_file(self, filepath: str) -> None:
-        """Load configuration settings from a JSON file."""
-        path = Path(filepath)
-        if not path.is_file():
-            raise FileNotFoundError(f"Config file not found: {filepath}")
-
-        with open(path, "r", encoding="utf-8") as f:
-            user_config = json.load(f)
-            if isinstance(user_config, dict):
-                self._config.update(user_config)
-
-    def get(self, key: str, default: Any = None) -> Any:
-        """Retrieve a configuration value by key."""
-        return self._config.get(key, default)
-
-    def set(self, key: str, value: Any) -> None:
-        """Set or override a configuration key."""
-        self._config[key] = value
-
-    def to_dict(self) -> Dict[str, Any]:
-        """Return the active configuration dictionary."""
-        return self._config.copy()
+def save_config(config: Dict[str, Any], config_path: str = "config.json") -> None:
+    """
+    Persists the current configuration to a JSON file.
+    """
+    try:
+        with open(config_path, "w") as f:
+            json.dump(config, f, indent=4)
+    except IOError as e:
+        print(f"Error: Could not save config to {config_path}: {e}")
