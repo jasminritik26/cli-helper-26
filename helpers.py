@@ -1,51 +1,40 @@
-"""General helper utilities for CLI operations."""
-
+import os
+import json
 import sys
-from typing import Dict, List
+from typing import Any, Optional
 
-
-def format_bytes(size_in_bytes: int) -> str:
-    """Format byte sizes into human-readable strings."""
-    if size_in_bytes < 0:
-        raise ValueError("Size cannot be negative")
-    units = ["B", "KB", "MB", "GB", "TB"]
-    size = float(size_in_bytes)
-    for unit in units:
-        if size < 1024.0 or unit == units[-1]:
-            return f"{size:.2f} {unit}" if unit != "B" else f"{int(size)} B"
-        size /= 1024.0
-    return f"{size:.2f} PB"
-
-
-def truncate_text(text: str, max_length: int = 50, suffix: str = "...") -> str:
-    """Truncate text to a maximum length with optional suffix."""
-    if len(text) <= max_length:
-        return text
-    if max_length <= len(suffix):
-        return text[:max_length]
-    return text[: max_length - len(suffix)] + suffix
-
-
-def parse_key_value(items: List[str], delimiter: str = "=") -> Dict[str, str]:
-    """Parse a list of key-value pair strings into a dictionary."""
-    result: Dict[str, str] = {}
-    for item in items:
-        if delimiter in item:
-            key, value = item.split(delimiter, 1)
-            result[key.strip()] = value.strip()
-        else:
-            result[item.strip()] = ""
-    return result
-
-
-def confirm_prompt(message: str, default: bool = False) -> bool:
-    """Display a confirmation prompt and return boolean response."""
-    suffix = " [Y/n]: " if default else " [y/N]: "
+def read_json(file_path: str) -> dict:
+    """Load and parse a JSON file safely."""
+    if not os.path.exists(file_path):
+        return {}
     try:
-        response = input(f"{message}{suffix}").strip().lower()
-        if not response:
-            return default
-        return response in ("y", "yes", "true", "1")
-    except (KeyboardInterrupt, EOFError):
-        sys.stdout.write("\n")
+        with open(file_path, 'r') as f:
+            return json.load(f)
+    except (json.JSONDecodeError, IOError):
+        return {}
+
+def write_json(file_path: str, data: dict) -> bool:
+    """Write dictionary to a JSON file."""
+    try:
+        with open(file_path, 'w') as f:
+            json.dump(data, f, indent=4)
+        return True
+    except IOError:
         return False
+
+def get_env_var(key: str, default: Optional[str] = None) -> str:
+    """Retrieve environment variable with fallback."""
+    return os.environ.get(key, default or "")
+
+def format_byte_size(size: int) -> str:
+    """Convert bytes to human readable format."""
+    for unit in ['B', 'KB', 'MB', 'GB']:
+        if size < 1024:
+            return f"{size:.2f} {unit}"
+        size /= 1024
+    return f"{size:.2f} TB"
+
+def exit_with_msg(message: str, code: int = 1) -> None:
+    """Print error and terminate execution."""
+    print(f"Error: {message}", file=sys.stderr)
+    sys.exit(code)
