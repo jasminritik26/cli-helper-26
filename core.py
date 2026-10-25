@@ -1,42 +1,56 @@
 import functools
 import re
-from typing import Any, Callable, Dict, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 
-class CommandRunner:
-    """Core command runner with argument caching and pre-compiled regex pattern matching."""
+class CommandPipeline:
+    """Core command execution pipeline with result caching and optimized parsing."""
 
-    def __init__(self) -> None:
-        self._registry: Dict[str, Callable[..., Any]] = {}
-        # Pre-compile argument parsing pattern for speed across repeated executions
-        self._arg_pattern = re.compile(r'(?:[^\s"]|"[^"]*")+')
+    def __init__(self, max_cache_size: int = 128) -> None:
+        self.max_cache_size = max_cache_size
+        # Pre-compile regex patterns for performance optimization
+        self._token_pattern = re.compile(r'"[^"]*"|\'[^\']*\'|\S+')
+        self._var_pattern = re.compile(r"\$\{([A-Za-z0-9_]+)\}")
 
-    def register(self, name: str, func: Callable[..., Any]) -> None:
-        """Register a named command handler."""
-        self._registry[name] = func
-
-    @functools.lru_cache(maxsize=512)
-    def parse_args(self, raw_input: str) -> Tuple[str, ...]:
-        """Parse and sanitize CLI input with LRU caching for frequent commands."""
-        cleaned = raw_input.strip()
-        if not cleaned:
+    @functools.lru_cache(maxsize=256)
+    def parse_tokens(self, raw_input: str) -> Tuple[str, ...]:
+        """Parse raw input into command tokens with LRU caching."""
+        if not raw_input or not raw_input.strip():
             return ()
-        matches = self._arg_pattern.findall(cleaned)
-        return tuple(match.strip('"') for match in matches)
+        matches = self._token_pattern.findall(raw_input.strip())
+        cleaned = [m.strip("'\"") for m in matches]
+        return tuple(cleaned)
 
-    def execute(self, raw_input: str) -> Optional[Any]:
-        """Fast-path execution of commands from cached input tokens."""
-        tokens = self.parse_args(raw_input)
-        if not tokens:
-            return None
+    def resolve_variables(
+        self, tokens: Tuple[str, ...], env: Dict[str, str]
+    ) -> List[str]:
+        """Interpolate environment variables into command tokens."""
+        resolved = []
+        for token in tokens:
+            def replace_var(match: re.Match) -> str:
+                var_name = match.group(1)
+                return env.get(var_name, match.group(0))
 
-        cmd_name, *args = tokens
-        handler = self._registry.get(cmd_name)
-        if not handler:
-            raise ValueError(f"Unknown command: {cmd_name}")
-
-        return handler(*args)
+            resolved_token = self._var_pattern.sub(replace_var, token)
+            resolved.append(resolved_token)
+        return resolved
 
     def clear_cache(self) -> None:
-        """Purge argument parsing cache."""
-        self.parse_args.cache_clear()
+        """Clear cached tokenization results."""
+        self.parse_tokens.cache_clear()
+
+
+def execute_batch(
+    pipeline: CommandPipeline,
+    commands: List[str],
+    env: Optional[Dict[str, str]] = None,
+) -> List[Tuple[str, ...]]:
+    """Process a batch of CLI command strings efficiently."""
+    environment = env or {}
+    results = []
+    for cmd in commands:
+        tokens = pipeline.parse_tokens(cmd)
+        if tokens:
+            resolved = tuple(pipeline.resolve_variables(tokens, environment))
+            results.append(resolved)
+    return results
