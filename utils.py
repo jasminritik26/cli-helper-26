@@ -1,44 +1,32 @@
-from typing import List, Dict, Any, Optional
+import json
+import os
+from typing import Any, Optional
 
-def format_output(data: List[Dict[str, Any]], key: str = "name") -> List[str]:
-    """
-    Extracts values from a list of dictionaries based on a provided key.
+def load_json_file(filepath: str) -> Optional[dict]:
+    """Reads and parses a JSON file from disk."""
+    if not os.path.exists(filepath):
+        return None
+    try:
+        with open(filepath, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except (json.JSONDecodeError, IOError):
+        return None
 
-    Args:
-        data: A list of dictionaries containing string keys.
-        key: The dictionary key to extract values from.
+def save_json_file(filepath: str, data: dict) -> bool:
+    """Serializes dictionary to a JSON file."""
+    try:
+        with open(filepath, 'w', encoding='utf-8') as f:
+            json.dump(data, f, indent=4, sort_keys=True)
+        return True
+    except (TypeError, IOError):
+        return False
 
-    Returns:
-        A list of strings corresponding to the extracted values.
-    """
-    return [str(item.get(key, "")) for item in data if key in item]
-
-def calculate_percentage(part: float, total: float, precision: int = 2) -> float:
-    """
-    Calculates percentage of a part relative to a total value.
-
-    Args:
-        part: The subset value.
-        total: The whole value.
-        precision: Number of decimal places for rounding.
-
-    Returns:
-        Calculated percentage as a float.
-    """
-    if total == 0:
-        return 0.0
-    return round((part / total) * 100, precision)
-
-def sanitize_input(user_input: Optional[str]) -> str:
-    """
-    Cleans whitespace and handles None types for user input.
-
-    Args:
-        user_input: The raw string input from CLI.
-
-    Returns:
-        A stripped, non-null string representation.
-    """
-    if not user_input:
-        return ""
-    return user_input.strip()
+def sanitize_data(data: Any) -> Any:
+    """Recursively strips whitespace from string values."""
+    if isinstance(data, dict):
+        return {k: sanitize_data(v) for k, v in data.items()}
+    if isinstance(data, list):
+        return [sanitize_data(i) for i in data]
+    if isinstance(data, str):
+        return data.strip()
+    return data
