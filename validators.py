@@ -1,86 +1,37 @@
 import re
-from pathlib import Path
-from typing import Tuple, Union
 
+class InputValidator:
+    """Handles input validation for cli-helper-26 commands."""
 
-def validate_port(port_input: Union[int, str]) -> int:
-    """Validate and convert network port input.
+    @staticmethod
+    def validate_command(cmd: str) -> bool:
+        """Checks if the command follows alphanumeric pattern."""
+        return bool(re.match(r"^[a-z0-9_-]{3,20}$", cmd.lower()))
 
-    Args:
-        port_input: Port number as integer or string.
+    @staticmethod
+    def validate_integer(value: str, min_val: int = 0, max_val: int = 100) -> int:
+        """Parses and validates range constraints for numeric inputs."""
+        try:
+            val = int(value)
+            if min_val <= val <= max_val:
+                return val
+            raise ValueError(f"Input {val} out of bounds")
+        except ValueError:
+            raise ValueError("Invalid numeric input provided")
 
-    Returns:
-        Validated integer port number.
-
-    Raises:
-        ValueError: If port is not a valid integer or out of range (1-65535).
-    """
-    try:
-        port = int(port_input)
-    except (TypeError, ValueError) as err:
-        raise ValueError(f"Invalid port value: {port_input}") from err
-
-    if not (1 <= port <= 65535):
-        raise ValueError(f"Port number {port} out of range (1-65535)")
-    return port
-
-
-def validate_existing_path(path_str: str, must_be_dir: bool = False) -> Path:
-    """Validate that a file or directory path exists.
-
-    Args:
-        path_str: Path string to validate.
-        must_be_dir: If True, ensure path is a directory.
-
-    Returns:
-        Resolved Path object.
-
-    Raises:
-        FileNotFoundError: If the path does not exist.
-        NotADirectoryError: If must_be_dir is True but path is a file.
-    """
-    path = Path(path_str).expanduser().resolve()
-    if not path.exists():
-        raise FileNotFoundError(f"Path does not exist: {path_str}")
-    if must_be_dir and not path.is_dir():
-        raise NotADirectoryError(f"Path is not a directory: {path_str}")
-    return path
-
-
-def validate_kv_pair(pair_str: str, delimiter: str = "=") -> Tuple[str, str]:
-    """Parse and validate a key-value pair string.
-
-    Args:
-        pair_str: String formatted as 'key=value'.
-        delimiter: Separator character, defaults to '='.
-
-    Returns:
-        Tuple containing (key, value).
-
-    Raises:
-        ValueError: If string cannot be split into exactly two parts.
-    """
-    parts = pair_str.split(delimiter, 1)
-    if len(parts) != 2 or not parts[0].strip():
-        raise ValueError(f"Invalid key-value pair format: '{pair_str}'")
-    return parts[0].strip(), parts[1].strip()
-
-
-def validate_identifier(name: str) -> str:
-    """Check if string is a valid CLI identifier or option name.
-
-    Args:
-        name: Candidate string name.
-
-    Returns:
-        The validated name string.
-
-    Raises:
-        ValueError: If name contains invalid characters.
-    """
-    pattern = r"^[a-zA-Z0-9_-]+$"
-    if not re.match(pattern, name):
-        raise ValueError(
-            f"Identifier '{name}' contains invalid characters"
-        )
-    return name
+def process_input_loop():
+    """Main loop with validation layer."""
+    validator = InputValidator()
+    
+    while True:
+        user_input = input("Enter command (or 'exit'): ").strip()
+        if user_input.lower() == 'exit':
+            break
+            
+        try:
+            if validator.validate_command(user_input):
+                print(f"Processing: {user_input}")
+            else:
+                print("Error: Invalid command format")
+        except Exception as e:
+            print(f"Validation failure: {e}")
