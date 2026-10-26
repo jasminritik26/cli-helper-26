@@ -1,32 +1,32 @@
 import json
-import os
-from typing import Any, Optional
+from typing import Any, Dict, Optional
 
-def load_json_file(filepath: str) -> Optional[dict]:
-    """Reads and parses a JSON file from disk."""
-    if not os.path.exists(filepath):
-        return None
-    try:
-        with open(filepath, 'r', encoding='utf-8') as f:
-            return json.load(f)
-    except (json.JSONDecodeError, IOError):
-        return None
-
-def save_json_file(filepath: str, data: dict) -> bool:
-    """Serializes dictionary to a JSON file."""
-    try:
-        with open(filepath, 'w', encoding='utf-8') as f:
-            json.dump(data, f, indent=4, sort_keys=True)
-        return True
-    except (TypeError, IOError):
-        return False
-
-def sanitize_data(data: Any) -> Any:
-    """Recursively strips whitespace from string values."""
+def clean_data(data: Any) -> Any:
+    """Recursively remove None values from dictionary."""
     if isinstance(data, dict):
-        return {k: sanitize_data(v) for k, v in data.items()}
-    if isinstance(data, list):
-        return [sanitize_data(i) for i in data]
-    if isinstance(data, str):
-        return data.strip()
+        return {k: clean_data(v) for k, v in data.items() if v is not None}
+    elif isinstance(data, list):
+        return [clean_data(v) for v in data]
     return data
+
+def format_json(data: Any, indent: int = 4) -> str:
+    """Serialize data to formatted string."""
+    try:
+        return json.dumps(data, indent=indent, sort_keys=True)
+    except (TypeError, ValueError) as e:
+        return f"Serialization error: {e}"
+
+def safe_get(data: Dict, keys: str, default: Any = None) -> Any:
+    """Access nested dictionary keys using dot notation."""
+    parts = keys.split('.')
+    current = data
+    try:
+        for part in parts:
+            current = current[part]
+        return current
+    except (KeyError, TypeError):
+        return default
+
+def validate_schema(data: Dict, required_keys: list) -> bool:
+    """Verify all keys exist in data dict."""
+    return all(key in data for key in required_keys)
