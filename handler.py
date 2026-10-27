@@ -1,35 +1,38 @@
-import json
-from typing import Any, Dict, Optional
+import sys
 
-def clean_data(data: Any) -> Any:
-    """Recursively strips whitespace from string values in nested dictionaries."""
-    if isinstance(data, dict):
-        return {k: clean_data(v) for k, v in data.items()}
-    elif isinstance(data, list):
-        return [clean_data(i) for i in data]
-    elif isinstance(data, str):
-        return data.strip()
-    return data
+def validate_input(user_input):
+    """Checks if input is non-empty and within character limits."""
+    stripped = user_input.strip()
+    if not stripped:
+        return False, "Input cannot be empty."
+    if len(stripped) > 255:
+        return False, "Input exceeds 255 characters."
+    return True, None
 
-def safe_load_json(file_path: str) -> Dict[str, Any]:
-    """Reads and parses JSON file with error fallback."""
-    try:
-        with open(file_path, 'r', encoding='utf-8') as f:
-            data = json.load(f)
-            return clean_data(data) if isinstance(data, dict) else {}
-    except (FileNotFoundError, json.JSONDecodeError):
-        return {}
+def main_loop():
+    """Main processing loop for cli-helper-26."""
+    print("CLI Helper v26. Type 'exit' to quit.")
+    
+    while True:
+        try:
+            user_input = input("> ")
+            if user_input.lower() == 'exit':
+                print("Exiting application.")
+                break
+            
+            is_valid, error_msg = validate_input(user_input)
+            
+            if not is_valid:
+                print(f"Validation error: {error_msg}")
+                continue
+                
+            process_data(user_input)
+        except EOFError:
+            break
 
-def format_output(data: Any, indent: int = 4) -> str:
-    """Serializes data to formatted JSON string."""
-    return json.dumps(data, indent=indent, sort_keys=True)
+def process_data(data):
+    """Placeholder for business logic processing."""
+    print(f"Processing: {data}")
 
-def merge_configs(base: Dict[str, Any], override: Dict[str, Any]) -> Dict[str, Any]:
-    """Deep merge for configuration dictionaries."""
-    result = base.copy()
-    for key, value in override.items():
-        if isinstance(value, dict) and key in result and isinstance(result[key], dict):
-            result[key] = merge_configs(result[key], value)
-        else:
-            result[key] = value
-    return result
+if __name__ == "__main__":
+    main_loop()
