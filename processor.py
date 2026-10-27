@@ -1,40 +1,48 @@
-import json
-import os
-from datetime import datetime
-from typing import Any, Dict, Optional
+import functools
+import time
+import urllib.error
+import urllib.request
+from typing import Any, Callable, Tuple, Type
 
-def load_json(filepath: str) -> Dict[str, Any]:
-    """Reads and parses a JSON file from disk."""
-    if not os.path.exists(filepath):
-        return {}
-    with open(filepath, 'r') as f:
-        return json.load(f)
 
-def save_json(filepath: str, data: Dict[str, Any]) -> None:
-    """Serializes data to a JSON file with indentation."""
-    with open(filepath, 'w') as f:
-        json.dump(data, f, indent=4)
+def retry_network_op(
+    max_retries: int = 3,
+    delay: float = 1.0,
+    backoff_factor: float = 2.0,
+    exceptions: Tuple[Type[BaseException], ...] = (
+        urllib.error.URLError,
+        TimeoutError,
+        ConnectionError,
+    ),
+) -> Callable:
+    """Decorator that retries network calls with exponential backoff."""
+    def decorator(func: Callable) -> Callable:
+        @functools.wraps(func)
+        def wrapper(*args: Any, **kwargs: Any) -> Any:
+            current_delay = delay
+            for attempt in range(1, max_retries + 1):
+                try:
+                    return func(*args, **kwargs)
+                except exceptions as err:
+                    if attempt == max_retries:
+                        raise err
+                    time.sleep(current_delay)
+                    current_delay *= backoff_factor
+        return wrapper
+    return decorator
 
-def get_timestamp() -> str:
-    """Generates an ISO format timestamp string."""
-    return datetime.now().isoformat()
 
-def safe_get(data: Dict[str, Any], key: str, default: Any = None) -> Any:
-    """Retrieves a dictionary value with a fallback."""
-    return data.get(key, default)
+class NetworkProcessor:
+    """Processes network requests for CLI tasks with retry resiliency."""
 
-def format_byte_size(size_bytes: int) -> str:
-    """Converts integer bytes to human-readable string."""
-    for unit in ['B', 'KB', 'MB', 'GB']:
-        if size_bytes < 1024:
-            return f"{size_bytes:.2f} {unit}"
-        size_bytes /= 1024
-    return f"{size_bytes:.2f} TB"
+    def __init__(self, timeout: int = 10):
+        self.timeout = timeout
 
-class DataProcessor:
-    def __init__(self, settings: Optional[Dict] = None):
-        self.settings = settings or {}
-
-    def validate_keys(self, data: Dict, required: list) -> bool:
-        """Checks if all required keys exist in dictionary."""
-        return all(key in data for key in required)
+    @retry_network_op(max_retries=3, delay=0.5, backoff_factor=2.0)
+    def fetch_data(self, url: str) -> str:
+        """Fetch text data from a remote URL with retry handling."""
+        request = urllib.request.Request(
+            url, headers={"User-Agent": "cli-helper-26/1.0"}
+        )
+        with urllib.request.urlopen(request, timeout=self.timeout) as response:
+            return response.read().decode("utf-8")
