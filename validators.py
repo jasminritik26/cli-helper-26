@@ -1,37 +1,49 @@
+import os
 import re
+from typing import Any, Dict, List, Tuple
 
-class InputValidator:
-    """Handles input validation for cli-helper-26 commands."""
 
-    @staticmethod
-    def validate_command(cmd: str) -> bool:
-        """Checks if the command follows alphanumeric pattern."""
-        return bool(re.match(r"^[a-z0-9_-]{3,20}$", cmd.lower()))
+class ValidationError(Exception):
+    """Raised when user input fails validation checks."""
+    pass
 
-    @staticmethod
-    def validate_integer(value: str, min_val: int = 0, max_val: int = 100) -> int:
-        """Parses and validates range constraints for numeric inputs."""
-        try:
-            val = int(value)
-            if min_val <= val <= max_val:
-                return val
-            raise ValueError(f"Input {val} out of bounds")
-        except ValueError:
-            raise ValueError("Invalid numeric input provided")
 
-def process_input_loop():
-    """Main loop with validation layer."""
-    validator = InputValidator()
+def validate_command_args(args: Dict[str, Any]) -> Tuple[bool, List[str]]:
+    """Validate argument dictionary passed from the main processing loop.
     
-    while True:
-        user_input = input("Enter command (or 'exit'): ").strip()
-        if user_input.lower() == 'exit':
-            break
-            
+    Returns a tuple of (is_valid, list_of_error_messages).
+    """
+    errors = []
+
+    # Validate output path if specified
+    if "output" in args and args["output"]:
+        output_dir = os.path.dirname(os.path.abspath(args["output"]))
+        if not os.path.exists(output_dir):
+            errors.append(f"Output directory does not exist: {output_dir}")
+
+    # Validate timeout option if present
+    if "timeout" in args and args["timeout"] is not None:
         try:
-            if validator.validate_command(user_input):
-                print(f"Processing: {user_input}")
-            else:
-                print("Error: Invalid command format")
-        except Exception as e:
-            print(f"Validation failure: {e}")
+            val = float(args["timeout"])
+            if val <= 0:
+                errors.append("Timeout must be a positive number.")
+        except (ValueError, TypeError):
+            errors.append("Timeout must be a valid numeric value.")
+
+    # Validate command name format
+    if "command" in args:
+        cmd = str(args["command"]).strip()
+        if not cmd:
+            errors.append("Command name cannot be empty.")
+        elif not re.match(r"^[a-zA-Z0-9_\-]+$", cmd):
+            errors.append("Command contains invalid characters.")
+
+    return (len(errors) == 0, errors)
+
+
+def sanitize_input(user_input: str) -> str:
+    """Strip leading/trailing whitespace and remove non-printable characters."""
+    if not isinstance(user_input, str):
+        return ""
+    cleaned = user_input.strip()
+    return "".join(char for char in cleaned if char.isprintable())
