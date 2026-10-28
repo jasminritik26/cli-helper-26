@@ -1,31 +1,39 @@
-import re
-from typing import Dict, Any, Union
+import os
 
-# Configuration constants for cli-helper-26
-DEFAULT_ENCODING: str = 'utf-8'
-LOG_LEVEL: str = 'INFO'
+# Configuration paths and default settings for cli-helper-26
+APP_NAME = "cli-helper-26"
+VERSION = "1.0.0"
 
-# Regex pattern for basic data sanitization
-SANITIZATION_PATTERN = re.compile(r'[^a-zA-Z0-9_\-\s]')
+# Default directory paths
+BASE_DIR = os.path.expanduser(f"~/.{APP_NAME}")
+LOG_DIR = os.path.join(BASE_DIR, "logs")
+CACHE_DIR = os.path.join(BASE_DIR, "cache")
 
-def sanitize_input(data: str) -> str:
-    """Removes restricted characters from input strings."""
-    return SANITIZATION_PATTERN.sub('', data).strip()
+# Execution defaults
+DEFAULT_TIMEOUT = 30
+MAX_RETRIES = 3
 
-def format_data_dict(data: Dict[str, Any]) -> Dict[str, str]:
-    """Converts all dictionary values to sanitized strings."""
-    return {str(k): sanitize_input(str(v)) for k, v in data.items()}
+# Status codes for internal handlers
+STATUS_SUCCESS = 0
+STATUS_ERROR_GENERAL = 1
+STATUS_ERROR_VALIDATION = 2
+STATUS_ERROR_TIMEOUT = 3
 
-# Data handling status codes
-STATUS_SUCCESS: int = 200
-STATUS_ERROR: int = 500
-STATUS_INVALID: int = 400
+# File extensions and formatting
+SUPPORTED_FORMATS = {'.json', '.yaml', '.yml', '.toml'}
+ENCODING = "utf-8"
 
-def get_status_message(code: int) -> str:
-    """Maps integer status codes to descriptive messages."""
-    messages = {
-        200: "Operation completed successfully",
-        500: "Internal server processing error",
-        400: "Invalid data input provided"
-    }
-    return messages.get(code, "Unknown status code")
+# Logging configuration
+LOG_FILE = os.path.join(LOG_DIR, "app.log")
+LOG_LEVELS = {
+    "DEBUG": 10,
+    "INFO": 20,
+    "WARNING": 30,
+    "ERROR": 40
+}
+
+def ensure_dirs():
+    """Initialize application filesystem structure."""
+    for path in [LOG_DIR, CACHE_DIR]:
+        if not os.path.exists(path):
+            os.makedirs(path, exist_ok=True)
