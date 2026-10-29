@@ -1,57 +1,64 @@
 # cli-helper-26
 
-`cli-helper-26` is a lightweight Python utility library designed to streamline the development of robust command-line interfaces. It provides a standardized wrapper for argument parsing, logging, and configuration management to help you build professional tools faster.
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+
+`cli-helper-26` is a lightweight Python utility designed to streamline command-line tool development with automatic argument parsing and rich terminal formatting. It enables developers to create polished interactive prompts, progress indicators, and structured table views with minimal boilerplate code.
 
 ## Features
 
-*   **Simplified Argument Mapping:** Automatically map CLI flags to typed Python dataclasses to eliminate boilerplate argument parsing code.
-*   **Integrated Logger:** Pre-configured logging system that supports color-coded output levels and seamless file-writing capabilities.
-*   **Auto-generated Help:** Effortlessly generate clean, formatted documentation and usage instructions based on your method annotations.
-*   **Zero-Dependency Core:** Built using only Python standard libraries to ensure high portability and minimal footprint in your projects.
+* **Declarative Command Routing**: Use Python decorators to register subcommands, automatic type validation, and generated help menus instantly.
+* **Rich Output Formatting**: Built-in support for ANSI color styling, dynamic progress bars, and auto-aligned tabular data rendering.
+* **Interactive Prompts**: Ready-to-use input handlers for fuzzy select lists, hidden secret inputs, and multi-choice confirmation dialogs.
+* **Async Task Spinners**: Non-blocking loading spinners to provide visual feedback during background I/O operations.
 
 ## Installation
 
-Install the package via pip:
+Install the package directly from PyPI:
 
 ```bash
 pip install cli-helper-26
 ```
 
-If you are working from the source repository:
+Or install the latest development build from source:
 
 ```bash
 git clone https://github.com/Developer/cli-helper-26.git
 cd cli-helper-26
-pip install -e .
+pip install .
 ```
 
-## Usage
+## Quick Start
 
-Define your command logic using the `Command` decorator to automatically handle flag extraction and help menus.
+Create an interactive CLI application in just a few lines of Python:
 
 ```python
-from cli_helper import Command, run
+from cli_helper_26 import CLIApp, Table, spinner
 
-@Command
-def process(input_file: str, verbose: bool = False):
-    """Process a file with optional verbose output."""
-    if verbose:
-        print(f"Reading: {input_file}")
-    # Application logic here
-    print("Done.")
+app = CLIApp(name="System Monitor", version="1.0.0")
+
+@app.command()
+def inspect(target: str, detailed: bool = False):
+    """Inspect system resource allocation for a given service."""
+    with spinner(f"Analyzing metrics for {target}..."):
+        # Simulated workload
+        records = [("CPU Usage", "12.4%"), ("Memory", "256MB")]
+
+    table = Table(headers=["Metric", "Value"])
+    for metric, value in records:
+        table.add_row(metric, value)
+    
+    table.render()
 
 if __name__ == "__main__":
-    run()
+    app.run()
 ```
 
-Run your script from the terminal:
+Run the command directly from your terminal:
 
 ```bash
-python main.py --input_file data.csv --verbose
+python app.py inspect --target "DatabaseService" --detailed
 ```
 
 ## License
-
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 Distributed under the MIT License. See `LICENSE` for more information.
