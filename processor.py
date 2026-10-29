@@ -1,41 +1,31 @@
-from typing import List, Optional, Dict, Any
+import json
+from typing import Any, Dict, Optional
 
-class DataProcessor:
-    """Handles transformation of raw input streams."""
+def sanitize_data(data: Any) -> Any:
+    """Recursively clean dictionary data for display or logging."""
+    if isinstance(data, dict):
+        return {str(k): sanitize_data(v) for k, v in data.items()}
+    elif isinstance(data, list):
+        return [sanitize_data(i) for i in data]
+    elif isinstance(data, (int, float, str, bool, type(None))):
+        return data
+    return str(data)
 
-    def __init__(self, settings: Optional[Dict[str, Any]] = None) -> None:
-        self.settings: Dict[str, Any] = settings or {}
+def load_json_file(file_path: str) -> Optional[Dict[str, Any]]:
+    """Safely load and parse a JSON configuration file."""
+    try:
+        with open(file_path, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        return None
 
-    def process_batch(self, items: List[str]) -> List[str]:
-        """
-        Cleans and normalizes a list of input strings.
-
-        Args:
-            items: List of raw strings to be processed.
-
-        Returns:
-            List of cleaned strings in uppercase.
-        """
-        if not items:
-            return []
-
-        processed: List[str] = [item.strip().upper() for item in items if item]
-        return processed
-
-    def get_summary(self, data: List[str]) -> Dict[str, int]:
-        """
-        Generates metrics regarding processed data content.
-
-        Args:
-            data: Processed strings to analyze.
-
-        Returns:
-            Dictionary containing total count and character average.
-        """
-        total_items: int = len(data)
-        avg_length: int = sum(len(i) for i in data) // total_items if total_items > 0 else 0
-        
-        return {
-            "count": total_items,
-            "average_length": avg_length
-        }
+def format_byte_size(size_bytes: int) -> str:
+    """Convert integer byte size to human readable string."""
+    if size_bytes == 0:
+        return "0B"
+    units = ("B", "KB", "MB", "GB", "TB")
+    i = 0
+    while size_bytes >= 1024 and i < len(units) - 1:
+        size_bytes /= 1024
+        i += 1
+    return f"{size_bytes:.2f} {units[i]}"
