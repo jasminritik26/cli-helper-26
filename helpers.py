@@ -1,40 +1,48 @@
-import os
-import json
 import sys
-from typing import Any, Optional
+from typing import Any, Dict
 
-def read_json(file_path: str) -> dict:
-    """Load and parse a JSON file safely."""
-    if not os.path.exists(file_path):
-        return {}
-    try:
-        with open(file_path, 'r') as f:
-            return json.load(f)
-    except (json.JSONDecodeError, IOError):
-        return {}
 
-def write_json(file_path: str, data: dict) -> bool:
-    """Write dictionary to a JSON file."""
+def format_bytes(size_in_bytes: int) -> str:
+    """Format a byte count into a human-readable string."""
+    if size_in_bytes < 0:
+        raise ValueError("Size cannot be negative")
+
+    units = ["B", "KB", "MB", "GB", "TB"]
+    size = float(size_in_bytes)
+    unit_index = 0
+
+    while size >= 1024.0 and unit_index < len(units) - 1:
+        size /= 1024.0
+        unit_index += 1
+
+    return f"{size:.2f} {units[unit_index]}"
+
+
+def truncate_text(text: str, max_length: int = 40, suffix: str = "...") -> str:
+    """Truncate text to a maximum length with an optional suffix."""
+    if len(text) <= max_length:
+        return text
+    if max_length <= len(suffix):
+        return suffix[:max_length]
+    return text[: max_length - len(suffix)] + suffix
+
+
+def confirm_prompt(message: str, default: bool = False) -> bool:
+    """Prompt the user for a yes/no response in the terminal."""
+    suffix = " [Y/n]: " if default else " [y/N]: "
     try:
-        with open(file_path, 'w') as f:
-            json.dump(data, f, indent=4)
-        return True
-    except IOError:
+        response = input(f"{message}{suffix}").strip().lower()
+    except (KeyboardInterrupt, EOFError):
+        print()
         return False
 
-def get_env_var(key: str, default: Optional[str] = None) -> str:
-    """Retrieve environment variable with fallback."""
-    return os.environ.get(key, default or "")
+    if not response:
+        return default
+    return response in ("y", "yes")
 
-def format_byte_size(size: int) -> str:
-    """Convert bytes to human readable format."""
-    for unit in ['B', 'KB', 'MB', 'GB']:
-        if size < 1024:
-            return f"{size:.2f} {unit}"
-        size /= 1024
-    return f"{size:.2f} TB"
 
-def exit_with_msg(message: str, code: int = 1) -> None:
-    """Print error and terminate execution."""
-    print(f"Error: {message}", file=sys.stderr)
-    sys.exit(code)
+def print_kv_table(data: Dict[str, Any], key_width: int = 20) -> None:
+    """Print a simple key-value dictionary as a formatted table."""
+    for key, value in data.items():
+        padded_key = str(key).ljust(key_width)
+        print(f"{padded_key} : {value}")
