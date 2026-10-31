@@ -1,43 +1,31 @@
-import sys
+import json
+from typing import Any, Optional
 
-def validate_input(user_input):
-    """Checks if input is non-empty and within character limits."""
-    stripped = user_input.strip()
-    if not stripped:
-        return False, "Input cannot be empty."
-    if len(stripped) > 255:
-        return False, "Input exceeds maximum length of 255 characters."
-    return True, stripped
+def safe_load_json(file_path: str) -> dict[str, Any]:
+    """Reads and parses a JSON file into a dictionary."""
+    try:
+        with open(file_path, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError) as e:
+        print(f"Error accessing {file_path}: {e}")
+        return {}
 
-def process_command(cmd):
-    """Simulates processing of validated commands."""
-    print(f"Processing: {cmd}")
+def sanitize_input(data: Any) -> Any:
+    """Removes trailing whitespace from string values in nested data."""
+    if isinstance(data, str):
+        return data.strip()
+    elif isinstance(data, dict):
+        return {k: sanitize_input(v) for k, v in data.items()}
+    elif isinstance(data, list):
+        return [sanitize_input(i) for i in data]
+    return data
 
-def run_main_loop():
-    """Main application loop with integrated validation logic."""
-    print("CLI Helper 26 - Type 'exit' to quit.")
-    
-    while True:
-        try:
-            user_input = input("> ")
-            
-            if user_input.lower() == 'exit':
-                print("Exiting application.")
-                break
-                
-            is_valid, result = validate_input(user_input)
-            
-            if not is_valid:
-                print(f"Validation Error: {result}")
-                continue
-                
-            process_command(result)
-            
-        except (KeyboardInterrupt, EOFError):
-            print("\nShutting down...")
-            break
-        except Exception as e:
-            print(f"An unexpected error occurred: {e}")
-
-if __name__ == "__main__":
-    run_main_loop()
+def merge_configurations(base: dict, overrides: dict) -> dict:
+    """Deep merge for configuration dictionaries."""
+    result = base.copy()
+    for key, value in overrides.items():
+        if isinstance(value, dict) and key in result and isinstance(result[key], dict):
+            result[key] = merge_configurations(result[key], value)
+        else:
+            result[key] = value
+    return result
