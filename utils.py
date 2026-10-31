@@ -1,69 +1,46 @@
-"""Utility functions for formatting and interacting with command line interface."""
+import functools
+import logging
+import time
+from typing import Any, Callable, Tuple, Type
 
-from typing import Any, Sequence
-
-
-def format_cli_table(headers: Sequence[str], rows: Sequence[Sequence[Any]]) -> str:
-    """Format tabular data into a readable plain-text CLI table.
-
-    Args:
-        headers: Sequence of header column names.
-        rows: Sequence of rows containing values for each column.
-
-    Returns:
-        Formatted string representation of the table.
-    """
-    if not headers:
-        return ""
-
-    str_rows = [[str(cell) for cell in row] for row in rows]
-    col_widths = [
-        max(len(header), max((len(row[i]) for row in str_rows if i < len(row)), default=0))
-        for i, header in enumerate(headers)
-    ]
-
-    row_format = "  ".join(f"{{:<{width}}}" for width in col_widths)
-    separator = "  ".join("-" * width for width in col_widths)
-
-    lines = [row_format.format(*headers), separator]
-    for row in str_rows:
-        padded_row = row + [""] * (len(headers) - len(row))
-        lines.append(row_format.format(*padded_row[:len(headers)]))
-
-    return "\n".join(lines)
+logger = logging.getLogger("cli_helper")
 
 
-def confirm_action(prompt: str, default: bool = False) -> bool:
-    """Prompt the user for a yes/no confirmation via standard input.
+def retry_network_op(
+    max_retries: int = 3,
+    delay: float = 1.0,
+    backoff_factor: float = 2.0,
+    exceptions: Tuple[Type[Exception], ...] = (Exception,),
+) -> Callable:
+    """Decorator to retry network operations with exponential backoff.
 
     Args:
-        prompt: Question or prompt message to display.
-        default: Default boolean choice if input is empty.
-
-    Returns:
-        True if the user accepts, False otherwise.
+        max_retries: Maximum number of attempt cycles before failing.
+        delay: Initial delay in seconds between retries.
+        backoff_factor: Multiplier applied to delay on subsequent attempts.
+        exceptions: Exception types to trigger a retry.
     """
-    suffix = " [Y/n] " if default else " [y/N] "
-    user_input = input(f"{prompt}{suffix}").strip().lower()
 
-    if not user_input:
-        return default
-    return user_input in ("y", "yes")
+    def decorator(func: Callable[..., Any]) -> Callable[..., Any]:
+        @functools.wraps(func)
+        def wrapper(*args: Any, **kwargs: Any) -> Any:
+            current_delay = delay
+            for attempt in range(1, max_retries + 1):
+                try:
+                    return func(*args, **kwargs)
+                except exceptions as err:
+                    if attempt == max_retries:
+                        logger.error(
+                            f"Execution failed after {max_retries} attempts: {err}"
+                        )
+                        raise
+                    logger.warning(
+                        f"Attempt {attempt}/{max_retries} failed ({err}). "
+                        f"Retrying in {current_delay:.1f}s..."
+                    )
+                    time.sleep(current_delay)
+                    current_delay *= backoff_factor
 
+        return wrapper
 
-def truncate_text(text: str, max_length: int = 50, ellipsis: str = "...") -> str:
-    """Truncate string to maximum specified length with an ellipsis.
-
-    Args:
-        text: Input string to be truncated.
-        max_length: Maximum allowable length including ellipsis.
-        ellipsis: String sequence used to indicate truncation.
-
-    Returns:
-        Truncated string or original text if within limit.
-    """
-    if len(text) <= max_length:
-        return text
-    if max_length <= len(ellipsis):
-        return ellipsis[:max_length]
-    return text[: max_length - len(ellipsis)] + ellipsis
+    return decorator
