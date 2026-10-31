@@ -1,56 +1,46 @@
 import functools
 import re
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Callable, Dict, List, Tuple
 
 
-class CommandPipeline:
-    """Core command execution pipeline with result caching and optimized parsing."""
+class CommandRegistry:
+    """Core registry for CLI commands with optimized lookup and caching."""
 
-    def __init__(self, max_cache_size: int = 128) -> None:
-        self.max_cache_size = max_cache_size
-        # Pre-compile regex patterns for performance optimization
-        self._token_pattern = re.compile(r'"[^"]*"|\'[^\']*\'|\S+')
-        self._var_pattern = re.compile(r"\$\{([A-Za-z0-9_]+)\}")
+    def __init__(self) -> None:
+        self._commands: Dict[str, Callable] = {}
+        self._help_texts: Dict[str, str] = {}
+        self._compiled_patterns: Dict[str, re.Pattern] = {}
+
+    def register(self, name: str, help_text: str = "") -> Callable:
+        """Decorator to register a CLI command."""
+        def decorator(func: Callable) -> Callable:
+            self._commands[name] = func
+            self._help_texts[name] = help_text
+            # Pre-compile regex pattern for accelerated search
+            self._compiled_patterns[name] = re.compile(rf".*{re.escape(name)}.*", re.IGNORECASE)
+            self.find_matching_commands.cache_clear()
+            return func
+        return decorator
 
     @functools.lru_cache(maxsize=256)
-    def parse_tokens(self, raw_input: str) -> Tuple[str, ...]:
-        """Parse raw input into command tokens with LRU caching."""
-        if not raw_input or not raw_input.strip():
-            return ()
-        matches = self._token_pattern.findall(raw_input.strip())
-        cleaned = [m.strip("'\"") for m in matches]
-        return tuple(cleaned)
+    def find_matching_commands(self, query: str) -> List[Tuple[str, str]]:
+        """Find commands matching query string using cached pattern searches."""
+        clean_query = query.strip()
+        if not clean_query:
+            return [(name, self._help_texts[name]) for name in self._commands]
 
-    def resolve_variables(
-        self, tokens: Tuple[str, ...], env: Dict[str, str]
-    ) -> List[str]:
-        """Interpolate environment variables into command tokens."""
-        resolved = []
-        for token in tokens:
-            def replace_var(match: re.Match) -> str:
-                var_name = match.group(1)
-                return env.get(var_name, match.group(0))
+        matches = []
+        for name, pattern in self._compiled_patterns.items():
+            if pattern.search(clean_query):
+                matches.append((name, self._help_texts[name]))
+        return matches
 
-            resolved_token = self._var_pattern.sub(replace_var, token)
-            resolved.append(resolved_token)
-        return resolved
+    def execute(self, name: str, *args, **kwargs):
+        """Execute a registered command by name."""
+        if name not in self._commands:
+            raise KeyError(f"Command '{name}' is not registered.")
+        return self._commands[name](*args, **kwargs)
 
     def clear_cache(self) -> None:
-        """Clear cached tokenization results."""
-        self.parse_tokens.cache_clear()
-
-
-def execute_batch(
-    pipeline: CommandPipeline,
-    commands: List[str],
-    env: Optional[Dict[str, str]] = None,
-) -> List[Tuple[str, ...]]:
-    """Process a batch of CLI command strings efficiently."""
-    environment = env or {}
-    results = []
-    for cmd in commands:
-        tokens = pipeline.parse_tokens(cmd)
-        if tokens:
-            resolved = tuple(pipeline.resolve_variables(tokens, environment))
-            results.append(resolved)
-    return results
+        """Purge the lookup cache manually."""
+        self.find_matching_commands.cache_clear()
