@@ -1,48 +1,49 @@
-import sys
-import shutil
-from typing import Optional
+import json
+import shlex
+from typing import Any, Dict, List, Optional
 
 
-def format_bytes(size: float) -> str:
-    """Format a byte count into a human-readable string."""
-    for unit in ["B", "KB", "MB", "GB", "TB"]:
-        if abs(size) < 1024.0:
-            return f"{size:.1f} {unit}"
-        size /= 1024.0
-    return f"{size:.1f} PB"
+def safe_parse_json(raw_data: str, default: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    """Safely parse a JSON string into a dictionary, guarding against invalid types."""
+    fallback = default if default is not None else {}
+    if not isinstance(raw_data, str) or not raw_data.strip():
+        return fallback
 
-
-def truncate_text(text: str, max_length: int = 50, ellipsis: str = "...") -> str:
-    """Truncate text to a maximum length with an ellipsis."""
-    if len(text) <= max_length:
-        return text
-    return text[: max_length - len(ellipsis)] + ellipsis
-
-
-def prompt_confirm(message: str, default: bool = True) -> bool:
-    """Prompt the user for a boolean yes/no response in the CLI."""
-    suffix = " [Y/n]" if default else " [y/N]"
-    sys.stdout.write(f"{message}{suffix}: ")
-    sys.stdout.flush()
-
-    response = sys.stdin.readline().strip().lower()
-    if not response:
-        return default
-    return response in ("y", "yes")
-
-
-def get_terminal_width(default: int = 80) -> int:
-    """Get the current terminal width in characters."""
     try:
-        columns, _ = shutil.get_terminal_size(fallback=(default, 24))
-        return columns
-    except Exception:
-        return default
+        parsed = json.loads(raw_data)
+        return parsed if isinstance(parsed, dict) else fallback
+    except (json.JSONDecodeError, TypeError, ValueError):
+        return fallback
 
 
-def print_divider(char: str = "-", max_width: Optional[int] = None) -> None:
-    """Print a horizontal divider rule across the terminal."""
-    width = get_terminal_width()
-    if max_width and width > max_width:
-        width = max_width
-    print(char * width)
+def truncate_text(text: str, max_length: int = 80, suffix: str = "...") -> str:
+    """Truncate text to max_length safely handling negative lengths and non-string types."""
+    if text is None:
+        return ""
+    
+    str_text = str(text)
+    if max_length <= 0:
+        return ""
+    
+    if len(str_text) <= max_length:
+        return str_text
+
+    suffix_len = len(suffix)
+    if max_length <= suffix_len:
+        return str_text[:max_length]
+
+    return str_text[: max_length - suffix_len] + suffix
+
+
+def format_command_args(args: List[Any]) -> str:
+    """Safely join shell arguments handling non-string elements and empty lists."""
+    if not isinstance(args, (list, tuple)):
+        return ""
+
+    sanitized = []
+    for arg in args:
+        if arg is None:
+            continue
+        sanitized.append(shlex.quote(str(arg)))
+
+    return " ".join(sanitized)
