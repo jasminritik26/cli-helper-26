@@ -1,25 +1,31 @@
-from typing import Final, Dict, List
+import logging
 
-# Application configuration constants for cli-helper-26
-VERSION: Final[str] = "1.0.0"
-TIMEOUT_SECONDS: Final[int] = 30
-DEFAULT_ENCODING: Final[str] = "utf-8"
+# Configuration constants for cli-helper-26
+DEFAULT_TIMEOUT = 30
+MAX_RETRIES = 3
 
-# Supported command patterns for internal processing
-SUPPORTED_COMMANDS: Final[List[str]] = ["init", "run", "status", "cleanup"]
+# Error handling constants
+ERROR_EXIT_CODE = 1
+SUCCESS_EXIT_CODE = 0
 
-# Configuration paths mapping
-PATH_MAP: Final[Dict[str, str]] = {
-    "config": "~/.config/cli-helper/",
-    "logs": "/var/log/cli-helper/",
-    "cache": "/tmp/cli-helper/"
+# Logging configuration
+LOG_FORMAT = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+LOG_LEVEL = logging.INFO
+
+class ConfigError(Exception):
+    """Base class for configuration edge cases."""
+    pass
+
+def get_retry_delay(attempt: int) -> float:
+    """Calculates backoff delay for retries to prevent network flooding."""
+    if not isinstance(attempt, int) or attempt < 0:
+        return 1.0
+    return float(2 ** attempt)
+
+# Mapping for error status codes
+STATUS_MAP = {
+    "success": SUCCESS_EXIT_CODE,
+    "error": ERROR_EXIT_CODE,
+    "timeout": 2,
+    "validation": 3
 }
-
-def get_timeout_buffer() -> int:
-    """
-    Calculate buffer based on system timeout settings.
-
-    Returns:
-        int: Calculated integer buffer value.
-    """
-    return TIMEOUT_SECONDS + 5
