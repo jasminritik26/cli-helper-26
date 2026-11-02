@@ -1,46 +1,42 @@
-import functools
-import re
-from typing import Callable, Dict, List, Tuple
+import sys
 
+def validate_input(user_input):
+    """Ensures user input is non-empty and within character limits."""
+    stripped = user_input.strip()
+    if not stripped:
+        return False, "Input cannot be empty."
+    if len(stripped) > 100:
+        return False, "Input exceeds maximum length of 100 characters."
+    return True, stripped
 
-class CommandRegistry:
-    """Core registry for CLI commands with optimized lookup and caching."""
+def run_main_loop():
+    """Main processing loop with integrated input validation."""
+    print("CLI Helper 26 initialized. Type 'exit' to quit.")
+    
+    while True:
+        try:
+            raw_input = input(">>> ")
+            
+            if raw_input.lower() == 'exit':
+                print("Exiting program.")
+                break
+            
+            is_valid, result = validate_input(raw_input)
+            
+            if not is_valid:
+                print(f"Validation error: {result}")
+                continue
+                
+            # Processing logic for validated input
+            process_command(result)
+            
+        except (KeyboardInterrupt, EOFError):
+            print("\nShutting down gracefully.")
+            break
 
-    def __init__(self) -> None:
-        self._commands: Dict[str, Callable] = {}
-        self._help_texts: Dict[str, str] = {}
-        self._compiled_patterns: Dict[str, re.Pattern] = {}
+def process_command(cmd):
+    """Placeholder for actual business logic execution."""
+    print(f"Processing command: {cmd}")
 
-    def register(self, name: str, help_text: str = "") -> Callable:
-        """Decorator to register a CLI command."""
-        def decorator(func: Callable) -> Callable:
-            self._commands[name] = func
-            self._help_texts[name] = help_text
-            # Pre-compile regex pattern for accelerated search
-            self._compiled_patterns[name] = re.compile(rf".*{re.escape(name)}.*", re.IGNORECASE)
-            self.find_matching_commands.cache_clear()
-            return func
-        return decorator
-
-    @functools.lru_cache(maxsize=256)
-    def find_matching_commands(self, query: str) -> List[Tuple[str, str]]:
-        """Find commands matching query string using cached pattern searches."""
-        clean_query = query.strip()
-        if not clean_query:
-            return [(name, self._help_texts[name]) for name in self._commands]
-
-        matches = []
-        for name, pattern in self._compiled_patterns.items():
-            if pattern.search(clean_query):
-                matches.append((name, self._help_texts[name]))
-        return matches
-
-    def execute(self, name: str, *args, **kwargs):
-        """Execute a registered command by name."""
-        if name not in self._commands:
-            raise KeyError(f"Command '{name}' is not registered.")
-        return self._commands[name](*args, **kwargs)
-
-    def clear_cache(self) -> None:
-        """Purge the lookup cache manually."""
-        self.find_matching_commands.cache_clear()
+if __name__ == "__main__":
+    run_main_loop()
