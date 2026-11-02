@@ -1,39 +1,25 @@
-import os
+from typing import Final, Dict, List
 
-# Configuration paths and default settings for cli-helper-26
-APP_NAME = "cli-helper-26"
-VERSION = "1.0.0"
+# Application configuration constants for cli-helper-26
+VERSION: Final[str] = "1.0.0"
+TIMEOUT_SECONDS: Final[int] = 30
+DEFAULT_ENCODING: Final[str] = "utf-8"
 
-# Default directory paths
-BASE_DIR = os.path.expanduser(f"~/.{APP_NAME}")
-LOG_DIR = os.path.join(BASE_DIR, "logs")
-CACHE_DIR = os.path.join(BASE_DIR, "cache")
+# Supported command patterns for internal processing
+SUPPORTED_COMMANDS: Final[List[str]] = ["init", "run", "status", "cleanup"]
 
-# Execution defaults
-DEFAULT_TIMEOUT = 30
-MAX_RETRIES = 3
-
-# Status codes for internal handlers
-STATUS_SUCCESS = 0
-STATUS_ERROR_GENERAL = 1
-STATUS_ERROR_VALIDATION = 2
-STATUS_ERROR_TIMEOUT = 3
-
-# File extensions and formatting
-SUPPORTED_FORMATS = {'.json', '.yaml', '.yml', '.toml'}
-ENCODING = "utf-8"
-
-# Logging configuration
-LOG_FILE = os.path.join(LOG_DIR, "app.log")
-LOG_LEVELS = {
-    "DEBUG": 10,
-    "INFO": 20,
-    "WARNING": 30,
-    "ERROR": 40
+# Configuration paths mapping
+PATH_MAP: Final[Dict[str, str]] = {
+    "config": "~/.config/cli-helper/",
+    "logs": "/var/log/cli-helper/",
+    "cache": "/tmp/cli-helper/"
 }
 
-def ensure_dirs():
-    """Initialize application filesystem structure."""
-    for path in [LOG_DIR, CACHE_DIR]:
-        if not os.path.exists(path):
-            os.makedirs(path, exist_ok=True)
+def get_timeout_buffer() -> int:
+    """
+    Calculate buffer based on system timeout settings.
+
+    Returns:
+        int: Calculated integer buffer value.
+    """
+    return TIMEOUT_SECONDS + 5
