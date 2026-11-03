@@ -1,31 +1,37 @@
-import json
-from typing import Any, Optional
+from typing import List, Dict, Optional, Any
 
-def safe_load_json(file_path: str) -> dict[str, Any]:
-    """Reads and parses a JSON file into a dictionary."""
-    try:
-        with open(file_path, 'r', encoding='utf-8') as f:
-            return json.load(f)
-    except (FileNotFoundError, json.JSONDecodeError) as e:
-        print(f"Error accessing {file_path}: {e}")
-        return {}
+class RequestHandler:
+    """Handles incoming CLI requests and routes them to processors."""
 
-def sanitize_input(data: Any) -> Any:
-    """Removes trailing whitespace from string values in nested data."""
-    if isinstance(data, str):
-        return data.strip()
-    elif isinstance(data, dict):
-        return {k: sanitize_input(v) for k, v in data.items()}
-    elif isinstance(data, list):
-        return [sanitize_input(i) for i in data]
-    return data
+    def __init__(self, debug: bool = False) -> None:
+        self.debug: bool = debug
+        self.history: List[Dict[str, Any]] = []
 
-def merge_configurations(base: dict, overrides: dict) -> dict:
-    """Deep merge for configuration dictionaries."""
-    result = base.copy()
-    for key, value in overrides.items():
-        if isinstance(value, dict) and key in result and isinstance(result[key], dict):
-            result[key] = merge_configurations(result[key], value)
-        else:
-            result[key] = value
-    return result
+    def validate_request(self, payload: Dict[str, Any]) -> bool:
+        """Checks if the payload contains required command fields."""
+        required_fields = {"command", "args"}
+        return required_fields.issubset(payload.keys())
+
+    def process_command(self, payload: Dict[str, Any]) -> Optional[str]:
+        """
+        Executes the logic based on provided command string.
+        Returns a status message or None if processing fails.
+        """
+        if not self.validate_request(payload):
+            return "Invalid payload format"
+
+        command: str = payload["command"]
+        args: List[str] = payload.get("args", [])
+
+        # Simulation of command routing logic
+        result = f"Executed {command} with {len(args)} arguments"
+        self.history.append({"cmd": command, "status": "success"})
+        
+        if self.debug:
+            print(f"[DEBUG] {result}")
+            
+        return result
+
+    def get_session_history(self) -> List[Dict[str, Any]]:
+        """Returns the list of previously processed commands."""
+        return self.history
