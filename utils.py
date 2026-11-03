@@ -1,46 +1,34 @@
-import functools
-import logging
-import time
-from typing import Any, Callable, Tuple, Type
+import json
+import os
+from typing import Any, Optional
 
-logger = logging.getLogger("cli_helper")
+def load_json_data(file_path: str) -> Optional[dict]:
+    """Reads and parses a JSON file from disk."""
+    if not os.path.exists(file_path):
+        return None
+    try:
+        with open(file_path, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except (json.JSONDecodeError, IOError):
+        return None
 
+def save_json_data(data: Any, file_path: str) -> bool:
+    """Serializes data to a JSON file safely."""
+    try:
+        with open(file_path, 'w', encoding='utf-8') as f:
+            json.dump(data, f, indent=4)
+        return True
+    except (TypeError, IOError):
+        return False
 
-def retry_network_op(
-    max_retries: int = 3,
-    delay: float = 1.0,
-    backoff_factor: float = 2.0,
-    exceptions: Tuple[Type[Exception], ...] = (Exception,),
-) -> Callable:
-    """Decorator to retry network operations with exponential backoff.
+def clean_dict(data: dict) -> dict:
+    """Removes null entries from a dictionary."""
+    return {k: v for k, v in data.items() if v is not None}
 
-    Args:
-        max_retries: Maximum number of attempt cycles before failing.
-        delay: Initial delay in seconds between retries.
-        backoff_factor: Multiplier applied to delay on subsequent attempts.
-        exceptions: Exception types to trigger a retry.
-    """
-
-    def decorator(func: Callable[..., Any]) -> Callable[..., Any]:
-        @functools.wraps(func)
-        def wrapper(*args: Any, **kwargs: Any) -> Any:
-            current_delay = delay
-            for attempt in range(1, max_retries + 1):
-                try:
-                    return func(*args, **kwargs)
-                except exceptions as err:
-                    if attempt == max_retries:
-                        logger.error(
-                            f"Execution failed after {max_retries} attempts: {err}"
-                        )
-                        raise
-                    logger.warning(
-                        f"Attempt {attempt}/{max_retries} failed ({err}). "
-                        f"Retrying in {current_delay:.1f}s..."
-                    )
-                    time.sleep(current_delay)
-                    current_delay *= backoff_factor
-
-        return wrapper
-
-    return decorator
+def format_byte_size(size: int) -> str:
+    """Converts bytes to a human-readable string."""
+    for unit in ['B', 'KB', 'MB', 'GB']:
+        if size < 1024:
+            return f"{size:.2f} {unit}"
+        size /= 1024
+    return f"{size:.2f} TB"
