@@ -1,36 +1,60 @@
+"""Validation and data sanitization utilities for CLI input handling."""
+
 import re
+from typing import Any, Dict, List, Optional, Tuple, Union
 
-def validate_input(user_input, pattern=r'^[a-zA-Z0-9_\s]+$'):
-    """
-    Validates user input against a regex pattern.
-    Returns (bool, str) tuple indicating status and message.
-    """
-    if not user_input or not isinstance(user_input, str):
-        return False, "input must be a non-empty string"
-    
-    if len(user_input) > 255:
-        return False, "input exceeds maximum length of 255 characters"
-    
-    if not re.match(pattern, user_input):
-        return False, "input contains invalid characters"
-    
-    return True, "success"
 
-def process_main_loop():
-    """
-    Example main loop with integrated validation.
-    """
-    while True:
-        data = input("Enter command (or 'exit' to quit): ").strip()
-        if data.lower() == 'exit':
-            break
-        
-        is_valid, message = validate_input(data)
-        if not is_valid:
-            print(f"Validation error: {message}")
-            continue
-        
-        print(f"Processing: {data}")
+def validate_dict_keys(
+    data: Dict[str, Any],
+    required_keys: List[str],
+    optional_keys: Optional[List[str]] = None,
+) -> Tuple[bool, List[str]]:
+    """Validate that a dictionary contains required keys and optional keys."""
+    if not isinstance(data, dict):
+        return False, ["Input must be a dictionary"]
 
-if __name__ == "__main__":
-    process_main_loop()
+    missing = [k for k in required_keys if k not in data]
+    if missing:
+        return False, [f"Missing required key: {k}" for k in missing]
+
+    if optional_keys is not None:
+        allowed = set(required_keys) | set(optional_keys)
+        unknown = [k for k in data if k not in allowed]
+        if unknown:
+            return False, [f"Unknown key detected: {k}" for k in unknown]
+
+    return True, []
+
+
+def coerce_numeric(
+    value: Any,
+    min_val: Optional[Union[int, float]] = None,
+    max_val: Optional[Union[int, float]] = None,
+    default: Optional[Union[int, float]] = None,
+) -> Optional[Union[int, float]]:
+    """Attempt to convert value to int/float with optional bounds checking."""
+    if value is None:
+        return default
+
+    try:
+        num = float(value)
+        if num.is_integer():
+            num = int(num)
+    except (ValueError, TypeError):
+        return default
+
+    if min_val is not None and num < min_val:
+        return default
+    if max_val is not None and num > max_val:
+        return default
+
+    return num
+
+
+def sanitize_cli_arg(val: str, max_length: int = 255) -> str:
+    """Strip control characters and truncate string to max length."""
+    if not isinstance(val, str):
+        val = str(val)
+
+    cleaned = re.sub(r"[\x00-\x1f\x7f]", "", val.strip())
+    return cleaned[:max_length]
