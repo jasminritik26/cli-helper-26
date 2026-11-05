@@ -1,49 +1,41 @@
-import json
-import shlex
-from typing import Any, Dict, List, Optional
+import functools
+import time
+import urllib.error
+from typing import Any, Callable, Tuple, Type
 
 
-def safe_parse_json(raw_data: str, default: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
-    """Safely parse a JSON string into a dictionary, guarding against invalid types."""
-    fallback = default if default is not None else {}
-    if not isinstance(raw_data, str) or not raw_data.strip():
-        return fallback
+def retry_network_operation(
+    max_retries: int = 3,
+    delay: float = 1.0,
+    backoff_factor: float = 2.0,
+    exceptions: Tuple[Type[BaseException], ...] = (urllib.error.URLError, TimeoutError, ConnectionError),
+) -> Callable:
+    """Decorator to retry network operations with exponential backoff."""
+    def decorator(func: Callable) -> Callable:
+        @functools.wraps(func)
+        def wrapper(*args: Any, **kwargs: Any) -> Any:
+            current_delay = delay
+            for attempt in range(1, max_retries + 1):
+                try:
+                    return func(*args, **kwargs)
+                except exceptions as err:
+                    if attempt == max_retries:
+                        raise err
+                    time.sleep(current_delay)
+                    current_delay *= backoff_factor
+            return None
+        return wrapper
+    return decorator
 
-    try:
-        parsed = json.loads(raw_data)
-        return parsed if isinstance(parsed, dict) else fallback
-    except (json.JSONDecodeError, TypeError, ValueError):
-        return fallback
 
-
-def truncate_text(text: str, max_length: int = 80, suffix: str = "...") -> str:
-    """Truncate text to max_length safely handling negative lengths and non-string types."""
-    if text is None:
-        return ""
+def fetch_url_data(url: str, timeout: int = 10) -> str:
+    """Helper function to safely fetch URL data using retries."""
+    import urllib.request
     
-    str_text = str(text)
-    if max_length <= 0:
-        return ""
-    
-    if len(str_text) <= max_length:
-        return str_text
-
-    suffix_len = len(suffix)
-    if max_length <= suffix_len:
-        return str_text[:max_length]
-
-    return str_text[: max_length - suffix_len] + suffix
-
-
-def format_command_args(args: List[Any]) -> str:
-    """Safely join shell arguments handling non-string elements and empty lists."""
-    if not isinstance(args, (list, tuple)):
-        return ""
-
-    sanitized = []
-    for arg in args:
-        if arg is None:
-            continue
-        sanitized.append(shlex.quote(str(arg)))
-
-    return " ".join(sanitized)
+    @retry_network_operation(max_retries=3, delay=0.5, backoff_factor=2.0)
+    def _execute_request() -> str:
+        req = urllib.request.Request(url, headers={"User-Agent": "cli-helper-26/1.0"})
+        with urllib.request.urlopen(req, timeout=timeout) as response:
+            return response.read().decode("utf-8")
+            
+    return _execute_request()
