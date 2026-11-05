@@ -1,33 +1,33 @@
 import logging
-from logging.handlers import RotatingFileHandler
-import os
+import sys
+from typing import Optional
 
-def setup_logger(name: str, log_file: str = 'app.log', level: int = logging.INFO):
-    """
-    Configures a logger with file rotation to prevent disk space issues.
-    """
+class CLIFormatter(logging.Formatter):
+    """Custom formatter for consistent CLI output styling."""
+    FORMATS = {
+        logging.DEBUG: "[DEBUG] %(message)s",
+        logging.INFO: "%(message)s",
+        logging.WARNING: "[WARNING] %(message)s",
+        logging.ERROR: "[ERROR] %(message)s",
+        logging.CRITICAL: "[CRITICAL] %(message)s"
+    }
+
+    def format(self, record: logging.LogRecord) -> str:
+        log_fmt = self.FORMATS.get(record.levelno)
+        formatter = logging.Formatter(log_fmt)
+        return formatter.format(record)
+
+def get_logger(name: str, level: int = logging.INFO) -> logging.Logger:
+    """Initializes and returns a configured application logger."""
     logger = logging.getLogger(name)
     logger.setLevel(level)
 
-    # Prevent duplicate handlers if setup is called multiple times
     if not logger.handlers:
-        # 5MB per file, keep 3 backup files
-        handler = RotatingFileHandler(
-            log_file, 
-            maxBytes=5*1024*1024, 
-            backupCount=3
-        )
-        
-        formatter = logging.Formatter(
-            '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-        )
-        handler.setFormatter(formatter)
-        
+        handler = logging.StreamHandler(sys.stdout)
+        handler.setFormatter(CLIFormatter())
         logger.addHandler(handler)
-        
-        # Optional: Add stream handler for console output
-        console_handler = logging.StreamHandler()
-        console_handler.setFormatter(formatter)
-        logger.addHandler(console_handler)
 
     return logger
+
+# Global logger instance for the CLI project
+cli_logger = get_logger("cli-helper-26")
