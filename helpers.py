@@ -1,41 +1,33 @@
-import functools
 import time
-import urllib.error
-from typing import Any, Callable, Tuple, Type
+import functools
+import requests
+from typing import Callable, Any
 
-
-def retry_network_operation(
-    max_retries: int = 3,
-    delay: float = 1.0,
-    backoff_factor: float = 2.0,
-    exceptions: Tuple[Type[BaseException], ...] = (urllib.error.URLError, TimeoutError, ConnectionError),
-) -> Callable:
-    """Decorator to retry network operations with exponential backoff."""
-    def decorator(func: Callable) -> Callable:
+def retry_network_operation(max_retries: int = 3, delay: float = 1.0):
+    """
+    Decorator for retrying network operations on failure.
+    """
+    def decorator(func: Callable):
         @functools.wraps(func)
         def wrapper(*args: Any, **kwargs: Any) -> Any:
-            current_delay = delay
-            for attempt in range(1, max_retries + 1):
+            attempts = 0
+            while attempts < max_retries:
                 try:
                     return func(*args, **kwargs)
-                except exceptions as err:
-                    if attempt == max_retries:
-                        raise err
-                    time.sleep(current_delay)
-                    current_delay *= backoff_factor
+                except (requests.exceptions.RequestException, ConnectionError) as e:
+                    attempts += 1
+                    if attempts >= max_retries:
+                        raise e
+                    time.sleep(delay * (2 ** (attempts - 1)))
             return None
         return wrapper
     return decorator
 
-
-def fetch_url_data(url: str, timeout: int = 10) -> str:
-    """Helper function to safely fetch URL data using retries."""
-    import urllib.request
-    
-    @retry_network_operation(max_retries=3, delay=0.5, backoff_factor=2.0)
-    def _execute_request() -> str:
-        req = urllib.request.Request(url, headers={"User-Agent": "cli-helper-26/1.0"})
-        with urllib.request.urlopen(req, timeout=timeout) as response:
-            return response.read().decode("utf-8")
-            
-    return _execute_request()
+@retry_network_operation(max_retries=3, delay=2.0)
+def fetch_url(url: str):
+    """
+    Example network operation using retry logic.
+    """
+    response = requests.get(url, timeout=10)
+    response.raise_for_status()
+    return response.json()
