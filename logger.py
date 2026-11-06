@@ -1,33 +1,37 @@
 import logging
-import sys
-from typing import Optional
+from logging.handlers import RotatingFileHandler
+import os
 
-class CLIFormatter(logging.Formatter):
-    """Custom formatter for consistent CLI output styling."""
-    FORMATS = {
-        logging.DEBUG: "[DEBUG] %(message)s",
-        logging.INFO: "%(message)s",
-        logging.WARNING: "[WARNING] %(message)s",
-        logging.ERROR: "[ERROR] %(message)s",
-        logging.CRITICAL: "[CRITICAL] %(message)s"
-    }
-
-    def format(self, record: logging.LogRecord) -> str:
-        log_fmt = self.FORMATS.get(record.levelno)
-        formatter = logging.Formatter(log_fmt)
-        return formatter.format(record)
-
-def get_logger(name: str, level: int = logging.INFO) -> logging.Logger:
-    """Initializes and returns a configured application logger."""
+def setup_logger(name: str, log_file: str = 'app.log', level: int = logging.INFO) -> logging.Logger:
+    """
+    Configures a logger with file rotation to manage log size.
+    """
     logger = logging.getLogger(name)
     logger.setLevel(level)
 
+    # Prevent duplicate handlers if logger is re-initialized
     if not logger.handlers:
-        handler = logging.StreamHandler(sys.stdout)
-        handler.setFormatter(CLIFormatter())
+        # 5MB per file, keep 3 backup files
+        handler = RotatingFileHandler(
+            log_file, 
+            maxBytes=5 * 1024 * 1024, 
+            backupCount=3
+        )
+        
+        formatter = logging.Formatter(
+            '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+        )
+        handler.setFormatter(formatter)
         logger.addHandler(handler)
+
+        # Optional: Add console output
+        console = logging.StreamHandler()
+        console.setFormatter(formatter)
+        logger.addHandler(console)
 
     return logger
 
-# Global logger instance for the CLI project
-cli_logger = get_logger("cli-helper-26")
+# Example usage:
+if __name__ == "__main__":
+    app_logger = setup_logger("cli-helper-26")
+    app_logger.info("Logger initialized successfully")
