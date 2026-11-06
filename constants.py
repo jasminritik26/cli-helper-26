@@ -1,31 +1,29 @@
-import logging
+import os
 
-# Configuration constants for cli-helper-26
-DEFAULT_TIMEOUT = 30
+# Application configuration constants
 MAX_RETRIES = 3
+TIMEOUT_SECONDS = 30
 
-# Error handling constants
-ERROR_EXIT_CODE = 1
-SUCCESS_EXIT_CODE = 0
+# Path and file system defaults
+DEFAULT_CONFIG_PATH = os.path.join(os.path.expanduser('~'), '.cli-helper-26', 'config.json')
+LOG_FILE_PATH = 'app.log'
 
-# Logging configuration
-LOG_FORMAT = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-LOG_LEVEL = logging.INFO
+# Error and status message strings
+ERROR_MSG_TIMEOUT = "Operation timed out after {} seconds."
+ERROR_MSG_FILE_ACCESS = "Insufficient permissions to access file: {}"
+ERROR_MSG_INVALID_INPUT = "Provided input failed validation criteria."
+STATUS_SUCCESS = "Operation completed successfully."
 
-class ConfigError(Exception):
-    """Base class for configuration edge cases."""
-    pass
+# Environment variable keys
+ENV_API_KEY = "CLI_HELPER_API_KEY"
+ENV_DEBUG_MODE = "CLI_HELPER_DEBUG"
 
-def get_retry_delay(attempt: int) -> float:
-    """Calculates backoff delay for retries to prevent network flooding."""
-    if not isinstance(attempt, int) or attempt < 0:
-        return 1.0
-    return float(2 ** attempt)
+def get_timeout_range():
+    """Return tuple of default timeout settings."""
+    return (5, TIMEOUT_SECONDS)
 
-# Mapping for error status codes
-STATUS_MAP = {
-    "success": SUCCESS_EXIT_CODE,
-    "error": ERROR_EXIT_CODE,
-    "timeout": 2,
-    "validation": 3
-}
+# Supported exit codes for error handling logic
+EXIT_SUCCESS = 0
+EXIT_INVALID_CONFIG = 1
+EXIT_NETWORK_ERROR = 2
+EXIT_PERMISSION_DENIED = 3
