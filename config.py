@@ -1,51 +1,53 @@
 import json
+from dataclasses import asdict, dataclass, fields
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
-DEFAULT_CONFIG: Dict[str, Any] = {
-    "app_name": "cli-helper",
-    "version": "1.0.0",
-    "debug": False,
-    "log_level": "INFO",
-    "output_format": "json",
-    "max_retries": 3,
-    "timeout": 30,
-}
+DEFAULT_CONFIG_PATH = Path.home() / ".cli_helper_config.json"
 
 
-class ConfigLoader:
-    """Loads CLI configuration with default fallback support."""
+@dataclass
+class AppConfig:
+    """Stores global application settings for cli-helper."""
 
-    def __init__(self, config_path: str | None = None):
-        self.config_path = Path(config_path) if config_path else self._get_default_path()
-        self._config: Dict[str, Any] = {}
+    verbose: bool = False
+    timeout: int = 30
+    output_format: str = "json"
+    log_level: str = "INFO"
 
-    def _get_default_path(self) -> Path:
-        """Return default configuration file path based on OS location."""
-        return Path.home() / ".config" / "cli-helper" / "config.json"
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "AppConfig":
+        """Creates a config instance filtering out unknown keys."""
+        valid_keys = {f.name for f in fields(cls)}
+        filtered = {k: v for k, v in data.items() if k in valid_keys}
+        return cls(**filtered)
 
-    def load(self) -> Dict[str, Any]:
-        """Load configuration from disk, merging user settings with defaults."""
-        merged_config = DEFAULT_CONFIG.copy()
 
+class ConfigManager:
+    """Handles loading, saving, and updating application configuration."""
+
+    def __init__(self, config_path: Optional[Path] = None) -> None:
+        self.config_path = config_path or DEFAULT_CONFIG_PATH
+        self.config = self.load_config()
+
+    def load_config(self) -> AppConfig:
+        """Loads configuration from JSON file or returns defaults."""
         if not self.config_path.exists():
-            self._config = merged_config
-            return self._config
+            return AppConfig()
 
         try:
             with open(self.config_path, "r", encoding="utf-8") as f:
-                user_config = json.load(f)
-                if isinstance(user_config, dict):
-                    merged_config.update(user_config)
+                data = json.load(f)
+            return AppConfig.from_dict(data)
         except (json.JSONDecodeError, OSError):
-            # Fallback to default config on parse or read failure
-            pass
+            return AppConfig()
 
-        self._config = merged_config
-        return self._config
-
-    def get(self, key: str, default: Any = None) -> Any:
-        """Retrieve specific configuration setting."""
-        if not self._config:
-            self.load()
-        return self._config.get(key, default)
+    def save_config(self) -> bool:
+        """Saves current configuration state to disk."""
+        try:
+            self.config_path.parent.mkdir(parents=True, exist_ok=True)
+            with open(self.config_path, "w", encoding="utf-8") as f:
+                json.dump(asdict(self.config), f, indent=2)
+            return True
+        except OSError:
+            return False
