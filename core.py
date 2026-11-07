@@ -1,30 +1,56 @@
-from typing import List, Optional, Dict, Any
+import logging
+import random
+import time
+from typing import Any, Callable, Tuple, Type
 
-class CLIHandler:
-    """Handles command execution and argument processing for cli-helper-26."""
+logger = logging.getLogger("cli_helper")
 
-    def __init__(self, name: str, debug: bool = False) -> None:
-        self.name: str = name
-        self.debug: bool = debug
-        self.registry: Dict[str, Any] = {}
 
-    def register_command(self, cmd: str, func: Any) -> None:
-        """Registers a new command function to the internal registry."""
-        self.registry[cmd] = func
+def retry_network_operation(
+    max_retries: int = 3,
+    delay: float = 1.0,
+    backoff_factor: float = 2.0,
+    jitter: bool = True,
+    retryable_exceptions: Tuple[Type[Exception], ...] = (Exception,)
+) -> Callable:
+    """Decorator providing exponential backoff retries for network calls."""
+    def decorator(func: Callable) -> Callable:
+        def wrapper(*args: Any, **kwargs: Any) -> Any:
+            current_delay = delay
+            for attempt in range(1, max_retries + 1):
+                try:
+                    return func(*args, **kwargs)
+                except retryable_exceptions as exc:
+                    if attempt == max_retries:
+                        logger.error("Function '%s' failed after %d retries: %s", func.__name__, max_retries, exc)
+                        raise
+                    
+                    sleep_duration = current_delay
+                    if jitter:
+                        sleep_duration += random.uniform(0, 0.1 * current_delay)
+                    
+                    logger.warning(
+                        "Attempt %d/%d for '%s' failed (%s). Retrying in %.2fs...",
+                        attempt, max_retries, func.__name__, exc, sleep_duration
+                    )
+                    time.sleep(sleep_duration)
+                    current_delay *= backoff_factor
+        return wrapper
+    return decorator
 
-    def execute(self, cmd: str, *args: str) -> Optional[Any]:
-        """Executes a registered command with provided arguments."""
-        if cmd not in self.registry:
-            if self.debug:
-                print(f"Command {cmd} not found.")
-            return None
-        
-        return self.registry[cmd](*args)
 
-    def get_status(self) -> Dict[str, str]:
-        """Returns the current status of the CLI handler instance."""
-        return {"name": self.name, "registered": str(len(self.registry))}
-
-def format_output(data: List[str], prefix: str = "> ") -> str:
-    """Formats a list of strings into a standard CLI output block."""
-    return "\n".join([f"{prefix}{item}" for item in data])
+def execute_with_retry(
+    operation: Callable,
+    *args: Any,
+    max_retries: int = 3,
+    delay: float = 1.0,
+    exceptions: Tuple[Type[Exception], ...] = (Exception,),
+    **kwargs: Any
+) -> Any:
+    """Helper function to execute any callable directly with automatic retry logic."""
+    wrapped = retry_network_operation(
+        max_retries=max_retries,
+        delay=delay,
+        retryable_exceptions=exceptions
+    )(operation)
+    return wrapped(*args, **kwargs)
